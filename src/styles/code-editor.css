@@ -1,0 +1,212 @@
+/* ═══════════════════════════════════════
+   CODE EDITOR
+═══════════════════════════════════════ */
+
+.ce__root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--editor-bg);
+  overflow: hidden;
+}
+
+/* ── Toolbar ── */
+.ce__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--tab-height);
+  padding: 0 var(--space-3);
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-primary);
+  flex-shrink: 0;
+}
+
+.ce__toolbar-left,
+.ce__toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.ce__lang-select {
+  appearance: none;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-xs);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px var(--space-3) 4px var(--space-2);
+  cursor: pointer;
+  transition: border-color var(--transition-fast);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23737373' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  padding-right: 24px;
+}
+
+.ce__lang-select:hover,
+.ce__lang-select:focus {
+  border-color: var(--color-primary-border);
+  outline: none;
+}
+
+.ce__tool-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px var(--space-2);
+  border-radius: var(--radius-xs);
+  color: var(--text-muted);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+
+.ce__tool-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+/* ── Editor body ── */
+.ce__editor {
+  flex: 1;
+  position: relative;
+  overflow: auto;
+  background: var(--editor-bg);
+  cursor: text;
+}
+
+.ce__code-wrap {
+  display: flex;
+  min-height: 100%;
+  padding: var(--space-4) 0;
+}
+
+.ce__gutters {
+  flex-shrink: 0;
+  width: 48px;
+  padding: 0 var(--space-3);
+  background: var(--editor-gutter);
+  border-right: 1px solid rgba(255,255,255,0.04);
+  user-select: none;
+}
+
+.ce__line-num {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--editor-line-number);
+  text-align: right;
+}
+
+.ce__pre {
+  margin: 0;
+  padding: 0 var(--space-5);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.7;
+  color: #D4D4D4;
+  white-space: pre;
+  tab-size: 4;
+  flex: 1;
+  background: transparent;
+}
+
+/* Syntax tokens */
+.tok-kw    { color: #569CD6; }
+.tok-str   { color: #CE9178; }
+.tok-num   { color: #B5CEA8; }
+.tok-comment { color: #6A9955; font-style: italic; }
+.tok-type  { color: #4EC9B0; }
+
+/* Invisible textarea overlay for editing */
+.ce__textarea {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  resize: none;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.7;
+  color: transparent;
+  background: transparent;
+  border: none;
+  outline: none;
+  padding: var(--space-4) var(--space-5) var(--space-4) calc(48px + var(--space-5));
+  caret-color: var(--editor-cursor);
+  white-space: pre;
+  tab-size: 4;
+  cursor: text;
+}
+
+/* Subtle cursor line highlight when textarea focused */
+.ce__textarea:focus {
+  opacity: 0.01; /* near-invisible but focusable */
+}
+
+/* ── Footer ── */
+.ce__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-4);
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-primary);
+  flex-shrink: 0;
+}
+
+.ce__footer-left,
+.ce__footer-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.ce__footer-btn {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px var(--space-4);
+  border-radius: var(--radius-xs);
+  transition: background var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.ce__footer-btn--ghost {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border-primary);
+}
+
+.ce__footer-btn--ghost:hover {
+  color: var(--text-primary);
+  border-color: var(--border-primary);
+  background: var(--bg-hover);
+}
+
+.ce__footer-btn--secondary {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-primary);
+}
+
+.ce__footer-btn--secondary:hover {
+  border-color: var(--color-primary-border);
+  color: var(--color-primary);
+}
+
+.ce__footer-btn--primary {
+  background: var(--color-primary);
+  color: var(--text-inverse);
+  border: 1px solid transparent;
+  box-shadow: 0 2px 8px rgba(220, 20, 60, 0.35);
+}
+
+.ce__footer-btn--primary:hover {
+  background: var(--color-primary-hover);
+  box-shadow: 0 4px 12px rgba(220, 20, 60, 0.45);
+}
