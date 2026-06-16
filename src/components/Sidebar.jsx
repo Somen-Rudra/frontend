@@ -1,8 +1,8 @@
-import { useState, useRef, useEffect } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useState, useRef } from "react";
+import { Link, useLocation } from "react-router-dom";
 import ThemeToggle from "./ThemeToggle";
+import ProfilePopup from "./ProfilePopup";
 import "../styles/sidebar.css";
-import "../styles/profile.css";
 
 export const routeMap = {
   dashboard:    { label: "Dashboard",    path: "/",             icon: "ti-layout-dashboard" },
@@ -14,12 +14,10 @@ export const routeMap = {
   bookmarks:    { label: "Bookmarks",    path: "/bookmarks",    icon: "ti-bookmark" },
   progress:     { label: "Progress",     path: "/progress",     icon: "ti-chart-line" },
   certificates: { label: "Certificates", path: "/certificates", icon: "ti-certificate" },
-  settings:     { label: "Settings",     path: "/settings",     icon: "ti-settings" },
 };
 
-const BOTTOM_KEYS = ["settings"];
+const BOTTOM_KEYS = [];
 
-/* ─── User data (swap with real auth context) ─── */
 const USER = {
   name: "Arjun Sharma",
   handle: "@arjun_codes",
@@ -27,103 +25,11 @@ const USER = {
   plan: "Free",
 };
 
-/* ─── Profile popup menu ─── */
-function ProfilePopup({ onClose, collapsed }) {
-  const navigate = useNavigate();
-  const ref = useRef(null);
-
-  /* Close on outside click */
-  useEffect(() => {
-    const handler = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) onClose();
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [onClose]);
-
-  const go = (path) => { navigate(path); onClose(); };
-
-  return (
-    <div
-      ref={ref}
-      className={`prof-popup ${collapsed ? "prof-popup--collapsed" : ""}`}
-    >
-      {/* Identity header */}
-      <div className="prof-popup__header">
-        <div className="prof-popup__avatar">{USER.avatar}</div>
-        <div className="prof-popup__info">
-          <span className="prof-popup__name">{USER.name}</span>
-          <span className="prof-popup__handle">{USER.handle}</span>
-        </div>
-      </div>
-
-      <div className="prof-popup__plan">
-        <i className="ti ti-sparkles" aria-hidden="true" />
-        {USER.plan} Plan
-        <Link to="/pricing" className="prof-popup__upgrade" onClick={onClose}>
-          Upgrade
-        </Link>
-      </div>
-
-      <div className="prof-popup__divider" />
-
-      {/* Navigation items */}
-      <div className="prof-popup__section">
-        <button className="prof-popup__item" onClick={() => go("/profile")}>
-          <i className="ti ti-user" aria-hidden="true" />
-          View Profile
-        </button>
-        <button className="prof-popup__item" onClick={() => go("/progress")}>
-          <i className="ti ti-chart-line" aria-hidden="true" />
-          My Progress
-        </button>
-        <button className="prof-popup__item" onClick={() => go("/bookmarks")}>
-          <i className="ti ti-bookmark" aria-hidden="true" />
-          Bookmarks
-        </button>
-        <button className="prof-popup__item" onClick={() => go("/certificates")}>
-          <i className="ti ti-certificate" aria-hidden="true" />
-          Certificates
-        </button>
-      </div>
-
-      <div className="prof-popup__divider" />
-
-      <div className="prof-popup__section">
-        <button className="prof-popup__item" onClick={() => go("/settings")}>
-          <i className="ti ti-settings" aria-hidden="true" />
-          Settings
-        </button>
-        <button className="prof-popup__item" onClick={() => go("/settings/notifications")}>
-          <i className="ti ti-bell" aria-hidden="true" />
-          Notifications
-        </button>
-        <button className="prof-popup__item" onClick={() => go("/settings/billing")}>
-          <i className="ti ti-credit-card" aria-hidden="true" />
-          Billing
-        </button>
-      </div>
-
-      <div className="prof-popup__divider" />
-
-      <div className="prof-popup__section">
-        <button
-          className="prof-popup__item prof-popup__item--danger"
-          onClick={() => { onClose(); /* call your auth logout here */ }}
-        >
-          <i className="ti ti-logout" aria-hidden="true" />
-          Log out
-        </button>
-      </div>
-    </div>
-  );
-}
-
-/* ─── Main Sidebar ─── */
 export default function Sidebar({ routes = routeMap }) {
-  const location  = useLocation();
+  const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
+  const avatarRef = useRef(null);
 
   const topRoutes    = Object.entries(routes).filter(([k]) => !BOTTOM_KEYS.includes(k));
   const bottomRoutes = Object.entries(routes).filter(([k]) =>  BOTTOM_KEYS.includes(k));
@@ -215,9 +121,9 @@ export default function Sidebar({ routes = routeMap }) {
         <div className={`sidebar__bottom-row ${collapsed ? "sidebar__bottom-row--col" : ""}`}>
           <ThemeToggle />
 
-          {/* Avatar — opens popup, does NOT navigate directly */}
           <div className="sidebar__avatar-wrap">
             <button
+              ref={avatarRef}
               className={`sidebar__avatar ${showPopup ? "sidebar__avatar--active" : ""}`}
               onClick={() => setShowPopup(v => !v)}
               aria-label="Open profile menu"
@@ -229,6 +135,7 @@ export default function Sidebar({ routes = routeMap }) {
             {showPopup && (
               <ProfilePopup
                 onClose={() => setShowPopup(false)}
+                anchorRef={avatarRef}
                 collapsed={collapsed}
               />
             )}
