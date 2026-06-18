@@ -101,32 +101,45 @@ export default function Workspace() {
   }
 
   // /run — free run, backend stitches code, returns stdout/stderr
-  async function handleRun(code, judgeKey) {
+  async function handleRun(code, judgeKey, customCases = []) {
     codeRef.current = { code, judgeKey };
     setIsRunning(true);
     setTerminalOutput("");
     setIsErrorOutput(false);
+    setSubmitResults(null);
 
     try {
       const res = await API.post(`/problemSet/${slug}/run`, {
         language: judgeKey,
         code,
+        customCases,
       });
       const data = res.data;
 
-      if (data.timedOut) {
+      setSubmitResults(data.results || []);
+
+      const fail = data.firstFailure;
+      if (fail?.status === "compile_error") {
+        setIsErrorOutput(true);
+        setTerminalOutput(fail.stderr || "Compile error");
+      } else if (fail?.status === "time_limit_exceeded") {
         setIsErrorOutput(true);
         setTerminalOutput("Time Limit Exceeded");
-      } else if (data.stderr) {
+      } else if (fail?.status === "runtime_error") {
         setIsErrorOutput(true);
-        setTerminalOutput(data.stderr);
-      } else {
+        setTerminalOutput(fail.stderr || "Runtime Error");
+      } else if (data.verdict === "accepted" || !fail) {
         setIsErrorOutput(false);
-        setTerminalOutput(data.stdout || "(no output)");
+        setTerminalOutput(`All ${data.total} test cases passed`);
+      } else {
+        setIsErrorOutput(true);
+        setTerminalOutput(
+          `${data.passed}/${data.total} passed\n` +
+            (fail.stderr || fail.actualOutput || "Wrong answer"),
+        );
       }
     } catch (err) {
       setIsErrorOutput(true);
-      // axios wraps the error body in err.response.data
       setTerminalOutput(err.response?.data?.error || err.message);
     } finally {
       setIsRunning(false);
@@ -134,7 +147,7 @@ export default function Workspace() {
   }
 
   // /submit — backend fetches hidden cases, stitches code, runs all cases
-  async function handleSubmit(customCases = []) {
+  async function handleSubmit() {
     const { code, judgeKey } = codeRef.current;
 
     if (!code.trim()) {
@@ -150,12 +163,28 @@ export default function Workspace() {
       const res = await API.post(`/problemSet/${slug}/submit`, {
         language: judgeKey,
         code,
-        customCases,
       });
       const data = res.data;
 
-      console.log("[submit response]", data);
-      setSubmitResults(data.results || []);
+      // Backend only returns firstFailure, not full results array.
+      // Build a synthetic array so TestCases tab dots render correctly.
+      const syntheticResults = Array.from({ length: data.total }, (_, i) => {
+        if (i < data.passed)
+          return { index: i, passed: true, status: "accepted" };
+        if (data.firstFailure && i === data.passed)
+          return { index: i, passed: false, ...data.firstFailure };
+        return { index: i, passed: false, status: "wrong_answer" };
+      });
+
+      setSubmitResults(syntheticResults);
+
+      // Show verdict in Output tab too
+      setIsErrorOutput(data.verdict !== "accepted");
+      setTerminalOutput(
+        data.verdict === "accepted"
+          ? `Accepted — ${data.passed}/${data.total} passed`
+          : `${data.verdict.replace(/_/g, " ")} — ${data.passed}/${data.total} passed`,
+      );
     } catch (err) {
       setIsErrorOutput(true);
       setTerminalOutput(err.response?.data?.error || err.message);
@@ -164,6 +193,7 @@ export default function Workspace() {
       setIsSubmitting(false);
     }
   }
+  
 
   function clearOutput() {
     setTerminalOutput("");
@@ -172,13 +202,31 @@ export default function Workspace() {
 
   const factory = (node) => {
     switch (node.getComponent()) {
+      case "ProblemDescription":
+        return <ProblemDescription key={slug} problem={problem} />;
       case "CodeEditor":
         return (
           <CodeEditor
             onRun={handleRun}
+            onSubmit={handleSubmit} // ← lifted here
             isRunning={isRunning}
+            isSubmitting={isSubmitting} // ← lifted here
             onCodeChange={handleCodeChange}
             problem={problem}
+          />
+        );
+
+      case "TestCases":
+        return (
+          <TestCases
+            problem={problem}
+            onRun={(customCases) => {
+              // ← wrapper: pulls code+judgeKey from codeRef
+              const { code, judgeKey } = codeRef.current;
+              handleRun(code, judgeKey, customCases);
+            }}
+            submitResults={submitResults}
+            isSubmitting={isSubmitting}
           />
         );
       case "Output":
@@ -189,24 +237,21 @@ export default function Workspace() {
             clearOutput={clearOutput}
           />
         );
-      case "ProblemDescription":
-        return <ProblemDescription key={slug} problem={problem} />;
-      case "TestCases":
-        return (
-          <TestCases
-            problem={problem}
-            onSubmit={handleSubmit}
-            submitResults={submitResults}
-            isSubmitting={isSubmitting}
-          />
-        );
+
       default:
         return <div className="placeholder">{node.getName()}</div>;
     }
   };
 
   return (
-    <div style={{ position: "relative",width: "85vw", height: "100vh" , margin: "10px" }}>
+    <div
+      style={{
+        position: "relative",
+        width: "85vw",
+        height: "100vh",
+        margin: "10px",
+      }}
+    >
       {<Layout model={model} factory={factory} />}
     </div>
   );

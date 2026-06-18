@@ -3,11 +3,13 @@ const { spawn } = require("child_process");
 const crypto = require("crypto");
 const rateLimit = require("express-rate-limit");
 const cors = require("cors");
+const morgan = require("morgan")
 
 const app = express();
 
 app.use(express.json({ limit: "64kb" }));
 app.use(cors({ origin: process.env.CORS_ORIGIN || "http://localhost:5173" }));
+app.use(morgan('dev'))
 
 // ─────────────────────────────────────────────
 // Config

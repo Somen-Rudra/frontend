@@ -37,6 +37,8 @@ function resolveEditorTheme() {
 export default function CodeEditor({
   problem,
   onRun,
+  onSubmit,
+  isSubmitting,
   onCodeChange,
   isRunning,
 }) {
@@ -78,8 +80,7 @@ export default function CodeEditor({
 
     setLangKey(defaultLang);
 
-    const starterCode =
-      problem.languages?.[defaultLang]?.codeStub || "";
+    const starterCode = problem.languages?.[defaultLang]?.codeStub || "";
 
     setCode(starterCode);
 
@@ -94,10 +95,7 @@ export default function CodeEditor({
 
     setCode(newCode);
 
-    onCodeChange?.(
-      newCode,
-      LANGUAGES[langKey]?.judgeKey || langKey,
-    );
+    onCodeChange?.(newCode, LANGUAGES[langKey]?.judgeKey || langKey);
   }
 
   function handleLanguageChange(e) {
@@ -105,22 +103,19 @@ export default function CodeEditor({
 
     setLangKey(newLang);
 
-    const starterCode =
-      problem?.languages?.[newLang]?.codeStub || "";
+    const starterCode = problem?.languages?.[newLang]?.codeStub || "";
 
     setCode(starterCode);
 
-    onCodeChange?.(
-      starterCode,
-      LANGUAGES[newLang]?.judgeKey || newLang,
-    );
+    onCodeChange?.(starterCode, LANGUAGES[newLang]?.judgeKey || newLang);
   }
 
   function handleRun() {
-    onRun?.(
-      code,
-      LANGUAGES[langKey]?.judgeKey || langKey,
-    );
+    onRun?.(code, LANGUAGES[langKey]?.judgeKey || langKey);
+  }
+
+  function handleSubmit() {
+    onSubmit?.();
   }
 
   return (
@@ -147,7 +142,7 @@ export default function CodeEditor({
           <button
             className={`run-button ${isRunning ? "running" : ""}`}
             onClick={handleRun}
-            disabled={isRunning}
+            disabled={isRunning || isSubmitting}
           >
             {isRunning ? (
               <>
@@ -168,6 +163,33 @@ export default function CodeEditor({
               <>
                 <VscPlay size={16} />
                 Run
+              </>
+            )}
+          </button>
+          {/* Submit button — new */}
+          <button
+            className={`submit-button ${isSubmitting ? "submitting" : ""}`}
+            onClick={handleSubmit}
+            disabled={isRunning || isSubmitting} // ← disable during run too
+          >
+            {isSubmitting ? (
+              <>
+                <span
+                  style={{
+                    width: 12,
+                    height: 12,
+                    border: "2px solid rgba(255,255,255,0.3)",
+                    borderTopColor: "#fff",
+                    borderRadius: "50%",
+                    display: "inline-block",
+                    animation: "spin 0.7s linear infinite",
+                  }}
+                />
+                Submitting…
+              </>
+            ) : (
+              <>
+                <i className="ti ti-send" aria-hidden="true" /> Submit
               </>
             )}
           </button>

@@ -5,8 +5,16 @@
   height: 100vh;
   box-sizing: border-box;
   background:
-    radial-gradient(circle at top right, rgba(220, 20, 60, 0.12), transparent 35%),
-    radial-gradient(circle at bottom left, rgba(220, 20, 60, 0.08), transparent 30%),
+    radial-gradient(
+      circle at top right,
+      rgba(220, 20, 60, 0.12),
+      transparent 35%
+    ),
+    radial-gradient(
+      circle at bottom left,
+      rgba(220, 20, 60, 0.08),
+      transparent 30%
+    ),
     var(--bg-primary);
   overflow: hidden;
 }
@@ -75,7 +83,9 @@
   font-size: 14px;
   font-weight: bold;
   cursor: pointer;
-  transition: background-color 0.2s, transform 0.1s;
+  transition:
+    background-color 0.2s,
+    transform 0.1s;
 }
 
 .run-button:hover {
@@ -126,9 +136,15 @@
 }
 
 @keyframes pulse {
-  0%   { opacity: 0.3; }
-  50%  { opacity: 1;   }
-  100% { opacity: 0.3; }
+  0% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.3;
+  }
 }
 
 /* Monaco stacking */
@@ -142,3 +158,31 @@
   The editor theme (crimson / daybreak) controls its own background.
   Only the decorative overlay pseudo-elements should be transparent.
 */
+
+.submit-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 14px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  background: #16a34a; /* green-600 — adapt to your design tokens */
+  color: #fff;
+  transition:
+    background 0.15s,
+    opacity 0.15s;
+}
+.submit-button:hover:not(:disabled) {
+  background: #15803d;
+}
+.submit-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.submit-button.submitting {
+  opacity: 0.75;
+  cursor: not-allowed;
+}

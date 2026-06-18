@@ -1,6 +1,9 @@
 import axios from "axios";
 import Problem from "../models/problemModel.js";
-import Submission, { VERDICT, ALLOWED_LANGUAGES } from "../models/submissionModel.js";
+import Submission, {
+  VERDICT,
+  ALLOWED_LANGUAGES,
+} from "../models/submissionModel.js";
 
 /* =========================
    Config
@@ -11,13 +14,13 @@ const JUDGE_TIMEOUT_MS = parseInt(process.env.JUDGE_TIMEOUT_MS || "60000", 10);
 
 // Map your problem model's language keys → judge server's language keys
 const LANGUAGE_MAP = {
-  js:     "javascript",
-  py:     "python",
-  c:      "c",
-  cpp:    "cpp",
-  java:   "java",
+  js: "javascript",
+  py: "python",
+  c: "c",
+  cpp: "cpp",
+  java: "java",
   kotlin: "kotlin",
-  swift:  "swift",
+  swift: "swift",
 };
 
 /* =========================
@@ -54,14 +57,15 @@ function stitchCode(langTemplate, userCode) {
  */
 async function callJudge(language, stitchedCode, testCases) {
   const judgeLanguage = LANGUAGE_MAP[language];
-  if (!judgeLanguage) throw new Error(`No judge mapping for language: ${language}`);
+  if (!judgeLanguage)
+    throw new Error(`No judge mapping for language: ${language}`);
 
   const { data } = await axios.post(
     `${JUDGE_URL}/run-tests`,
     {
       language: judgeLanguage,
-      code:     stitchedCode,
-      testCases,          // [{ input, output }]
+      code: stitchedCode,
+      testCases, // [{ input, output }]
     },
     { timeout: JUDGE_TIMEOUT_MS },
   );
@@ -97,11 +101,11 @@ function buildFirstFailure(results, includeExpected = false) {
   if (!failing) return null;
 
   const obj = {
-    index:        failing.index,
-    status:       failing.status,
+    index: failing.index,
+    status: failing.status,
     actualOutput: failing.actualOutput,
-    stderr:       failing.stderr,
-    elapsed:      failing.elapsed,
+    stderr: failing.stderr,
+    elapsed: failing.elapsed,
   };
 
   if (includeExpected) obj.expectedOutput = failing.expectedOutput;
@@ -117,27 +121,37 @@ function buildFirstFailure(results, includeExpected = false) {
 
 export const runCode = async (req, res) => {
   try {
-    const { slug }             = req.params;
-    const { language, code }   = req.body;
+    const { slug } = req.params;
+    const { language, code, customCases = [] } = req.body;
 
     /* ── Basic validation ─────────────────────────────────────────────── */
     if (!language || !ALLOWED_LANGUAGES.includes(language)) {
-      return res.status(400).json({ success: false, message: "Unsupported language" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Unsupported language" });
     }
     if (typeof code !== "string" || !code.trim()) {
-      return res.status(400).json({ success: false, message: "Code must be non-empty" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Code must be non-empty" });
     }
     if (code.length > 65536) {
-      return res.status(400).json({ success: false, message: "Code exceeds 64 KB limit" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Code exceeds 64 KB limit" });
     }
 
     /* ── Fetch problem (visible test cases only) ──────────────────────── */
     const problem = await Problem.findOne({ slug, isPublished: true })
-      .select("languages visibleTestCases timeLimit memoryLimit _id problemNumber")
+      .select(
+        "languages visibleTestCases timeLimit memoryLimit _id problemNumber",
+      )
       .lean();
 
     if (!problem) {
-      return res.status(404).json({ success: false, message: "Problem not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Problem not found" });
     }
 
     const langTemplate = problem.languages?.[language];
@@ -149,59 +163,73 @@ export const runCode = async (req, res) => {
     }
 
     if (!problem.visibleTestCases?.length) {
-      return res.status(422).json({ success: false, message: "No visible test cases configured" });
+      return res
+        .status(422)
+        .json({ success: false, message: "No visible test cases configured" });
+    }
+
+    const testCases = [
+      ...(problem.visibleTestCases || []),
+      ...(customCases || []),
+    ];
+
+    if (!testCases.length) {
+      return res.status(422).json({
+        success: false,
+        message: "No test cases configured",
+      });
     }
 
     /* ── Stitch & judge ───────────────────────────────────────────────── */
     const stitchedCode = stitchCode(langTemplate, code);
 
-    const judgeResponse = await callJudge(language, stitchedCode, problem.visibleTestCases);
-
+    const judgeResponse = await callJudge(language, stitchedCode, testCases);
+    
     /* ── Build a lightweight result (no DB write for "run") ───────────── */
-    const results  = judgeResponse.results || [];
-    const verdict  = deriveVerdict(results);
+    const results = judgeResponse.results || [];
+    const verdict = deriveVerdict(results);
     const firstFail = buildFirstFailure(results, true); // expose expected in run-mode
 
     /* ── Optionally persist a non-official run record ─────────────────── */
     // Comment this block out entirely if you don't want run-mode saved to DB.
     if (req.user) {
       await Submission.create({
-        user:            req.user._id,
-        problem:         problem._id,
-        problemSlug:     slug,
-        problemNumber:   problem.problemNumber,
+        user: req.user._id,
+        problem: problem._id,
+        problemSlug: slug,
+        problemNumber: problem.problemNumber,
         language,
         code,
         verdict,
-        passedCount:     judgeResponse.passed  ?? 0,
-        totalCount:      judgeResponse.total   ?? results.length,
-        totalElapsed:    judgeResponse.totalElapsed ?? 0,
+        passedCount: judgeResponse.passed ?? 0,
+        totalCount: judgeResponse.total ?? results.length,
+        totalElapsed: judgeResponse.totalElapsed ?? 0,
         testCaseResults: results,
-        firstFailure:    firstFail,
-        mode:            "run",
-        isOfficial:      false,
+        firstFailure: firstFail,
+        mode: "run",
+        isOfficial: false,
       });
     }
 
     return res.status(200).json({
       success: true,
-      mode:    "run",
+      mode: "run",
       verdict,
-      passed:       judgeResponse.passed  ?? 0,
-      failed:       judgeResponse.failed  ?? 0,
-      total:        judgeResponse.total   ?? results.length,
+      passed: judgeResponse.passed ?? 0,
+      failed: judgeResponse.failed ?? 0,
+      total: judgeResponse.total ?? results.length,
       totalElapsed: judgeResponse.totalElapsed ?? 0,
       firstFailure: firstFail,
       results: results.map((r) => ({
-        index:          r.index,
-        passed:         r.passed,
-        status:         r.status,
-        stdin:          r.stdin,
+        index: r.index,
+        passed: r.passed,
+        status: r.status,
+        stdin: r.stdin,
         expectedOutput: r.expectedOutput,
-        actualOutput:   r.actualOutput,
-        stderr:         r.stderr,
-        elapsed:        r.elapsed,
-        timedOut:       r.timedOut,
+        actualOutput: r.actualOutput,
+        stderr: r.stderr,
+        elapsed: r.elapsed,
+        timedOut: r.timedOut,
         outputExceeded: r.outputExceeded,
       })),
     });
@@ -209,18 +237,22 @@ export const runCode = async (req, res) => {
     console.error("[runCode]", err.message);
 
     if (err.code === "ECONNREFUSED" || err.code === "ECONNRESET") {
-      return res.status(503).json({ success: false, message: "Judge service unavailable" });
+      return res
+        .status(503)
+        .json({ success: false, message: "Judge service unavailable" });
     }
     if (err.response) {
       // axios received an error response from the judge
       return res.status(502).json({
         success: false,
         message: "Judge returned an error",
-        detail:  err.response.data,
+        detail: err.response.data,
       });
     }
 
-    return res.status(500).json({ success: false, message: "Internal Server Error" });
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal Server Error" });
   }
 };
 
@@ -232,7 +264,7 @@ export const runCode = async (req, res) => {
 
 export const submitCode = async (req, res) => {
   try {
-    const { slug }           = req.params;
+    const { slug } = req.params;
     const { language, code } = req.body;
 
     /* ── Auth guard ───────────────────────────────────────────────────── */
@@ -241,23 +273,35 @@ export const submitCode = async (req, res) => {
 
     /* ── Basic validation ─────────────────────────────────────────────── */
     if (!language || !ALLOWED_LANGUAGES.includes(language)) {
-      return res.status(400).json({ success: false, message: "Unsupported language" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Unsupported language" });
     }
     if (typeof code !== "string" || !code.trim()) {
-      return res.status(400).json({ success: false, message: "Code must be non-empty" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Code must be non-empty" });
     }
     if (code.length > 65536) {
-      return res.status(400).json({ success: false, message: "Code exceeds 64 KB limit" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Code exceeds 64 KB limit" });
     }
 
     /* ── Fetch problem WITH hidden test cases ─────────────────────────── */
     const problem = await Problem.findForJudge(
-      (await Problem.findOne({ slug, isPublished: true }).select("_id").lean())?._id,
-    ).select("languages visibleTestCases hiddenTestCases timeLimit memoryLimit _id problemNumber slug acceptanceRate")
-     .lean();
+      (await Problem.findOne({ slug, isPublished: true }).select("_id").lean())
+        ?._id,
+    )
+      .select(
+        "languages visibleTestCases hiddenTestCases timeLimit memoryLimit _id problemNumber slug acceptanceRate",
+      )
+      .lean();
 
     if (!problem) {
-      return res.status(404).json({ success: false, message: "Problem not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Problem not found" });
     }
 
     const langTemplate = problem.languages?.[language];
@@ -270,7 +314,9 @@ export const submitCode = async (req, res) => {
 
     const testCases = problem.hiddenTestCases;
     if (!testCases?.length) {
-      return res.status(422).json({ success: false, message: "No hidden test cases configured" });
+      return res
+        .status(422)
+        .json({ success: false, message: "No hidden test cases configured" });
     }
 
     /* ── Stitch & judge ───────────────────────────────────────────────── */
@@ -279,49 +325,53 @@ export const submitCode = async (req, res) => {
     const judgeResponse = await callJudge(language, stitchedCode, testCases);
 
     /* ── Derive result ────────────────────────────────────────────────── */
-    const results     = judgeResponse.results || [];
-    const verdict     = deriveVerdict(results);
-    const firstFail   = buildFirstFailure(results, false); // hide expected in submit-mode
+    const results = judgeResponse.results || [];
+    const verdict = deriveVerdict(results);
+    const firstFail = buildFirstFailure(results, false); // hide expected in submit-mode
     const passedCount = judgeResponse.passed ?? 0;
-    const totalCount  = judgeResponse.total  ?? results.length;
+    const totalCount = judgeResponse.total ?? results.length;
 
     /* ── Persist submission ───────────────────────────────────────────── */
     const submission = await Submission.create({
-      user:            req.user?._id ?? new (await import("mongoose")).default.Types.ObjectId(), // remove fallback once auth is wired
-      problem:         problem._id,
-      problemSlug:     slug,
-      problemNumber:   problem.problemNumber,
+      user:
+        req.user?._id ??
+        new (await import("mongoose")).default.Types.ObjectId(), // remove fallback once auth is wired
+      problem: problem._id,
+      problemSlug: slug,
+      problemNumber: problem.problemNumber,
       language,
       code,
       verdict,
       passedCount,
       totalCount,
-      totalElapsed:    judgeResponse.totalElapsed ?? 0,
+      totalElapsed: judgeResponse.totalElapsed ?? 0,
       testCaseResults: results,
-      firstFailure:    firstFail,
-      mode:            "submit",
-      isOfficial:      true,
+      firstFailure: firstFail,
+      mode: "submit",
+      isOfficial: true,
     });
 
     /* ── Update problem acceptance stats (fire-and-forget) ────────────── */
     Problem.findByIdAndUpdate(problem._id, {
       $inc: {
-        "acceptanceRate.totalSubs":    1,
+        "acceptanceRate.totalSubs": 1,
         "acceptanceRate.acceptedSubs": verdict === VERDICT.ACCEPTED ? 1 : 0,
       },
-    }).exec().catch((e) => console.error("[submitCode] acceptance update failed", e));
+    })
+      .exec()
+      .catch((e) => console.error("[submitCode] acceptance update failed", e));
 
     /* ── Response ─────────────────────────────────────────────────────── */
     return res.status(200).json({
       success: true,
-      mode:    "submit",
+      mode: "submit",
       submissionId: submission._id,
       verdict,
-      passed:       passedCount,
-      failed:       totalCount - passedCount,
-      total:        totalCount,
+      passed: passedCount,
+      failed: totalCount - passedCount,
+      total: totalCount,
       totalElapsed: judgeResponse.totalElapsed ?? 0,
-      firstFailure: firstFail,   // null when accepted
+      firstFailure: firstFail, // null when accepted
       // We intentionally omit per-test-case details on submit
       // (user can query GET /submissions/:id for the breakdown)
     });
@@ -329,17 +379,21 @@ export const submitCode = async (req, res) => {
     console.error("[submitCode]", err.message);
 
     if (err.code === "ECONNREFUSED" || err.code === "ECONNRESET") {
-      return res.status(503).json({ success: false, message: "Judge service unavailable" });
+      return res
+        .status(503)
+        .json({ success: false, message: "Judge service unavailable" });
     }
     if (err.response) {
       return res.status(502).json({
         success: false,
         message: "Judge returned an error",
-        detail:  err.response.data,
+        detail: err.response.data,
       });
     }
 
-    return res.status(500).json({ success: false, message: "Internal Server Error" });
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal Server Error" });
   }
 };
 
@@ -358,7 +412,9 @@ export const getSubmissionById = async (req, res) => {
       .lean();
 
     if (!submission) {
-      return res.status(404).json({ success: false, message: "Submission not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Submission not found" });
     }
 
     // Ownership check — uncomment when auth is wired:
@@ -369,7 +425,9 @@ export const getSubmissionById = async (req, res) => {
     return res.status(200).json({ success: true, data: submission });
   } catch (err) {
     console.error("[getSubmissionById]", err.message);
-    return res.status(500).json({ success: false, message: "Internal Server Error" });
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal Server Error" });
   }
 };
 
@@ -381,12 +439,12 @@ export const getSubmissionById = async (req, res) => {
 export const getSubmissionsForProblem = async (req, res) => {
   try {
     const { slug } = req.params;
-    const page     = Math.max(parseInt(req.query.page  || "1",  10), 1);
-    const limit    = Math.min(parseInt(req.query.limit || "20", 10), 100);
+    const page = Math.max(parseInt(req.query.page || "1", 10), 1);
+    const limit = Math.min(parseInt(req.query.limit || "20", 10), 100);
 
     const filter = {
       problemSlug: slug,
-      isOfficial:  true,
+      isOfficial: true,
       // user: req.user._id,   ← uncomment when auth is wired
     };
 
@@ -412,8 +470,8 @@ export const getSubmissionsForProblem = async (req, res) => {
     });
   } catch (err) {
     console.error("[getSubmissionsForProblem]", err.message);
-    return res.status(500).json({ success: false, message: "Internal Server Error" });
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal Server Error" });
   }
 };
-
- 

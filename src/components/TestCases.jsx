@@ -28,12 +28,7 @@ function buildStdin(fields, fieldValues) {
   return fields.map((f) => fieldValues[f] ?? "").join("\n");
 }
 
-export default function TestCases({
-  problem,
-  onSubmit,
-  submitResults,
-  isSubmitting,
-}) {
+export default function TestCases({ problem, onRun, submitResults }) {
   const [activeTab, setActiveTab] = useState(0);
   const [customCases, setCustomCases] = useState([]);
 
@@ -71,7 +66,9 @@ export default function TestCases({
   function updateCustomField(customIndex, key, value) {
     setCustomCases((prev) =>
       prev.map((cc, i) =>
-        i === customIndex ? { ...cc, _fields: { ...cc._fields, [key]: value } } : cc,
+        i === customIndex
+          ? { ...cc, _fields: { ...cc._fields, [key]: value } }
+          : cc,
       ),
     );
   }
@@ -82,12 +79,13 @@ export default function TestCases({
     );
   }
 
-  function handleSubmitClick() {
+  function handleRunClick() {
     const builtCustom = customCases.map((cc) => ({
       input: buildStdin(inputFields, cc._fields),
       output: cc.output,
     }));
-    onSubmit(builtCustom);
+
+    onRun?.(builtCustom);
   }
 
   const active = totalCases[activeTab];
@@ -108,7 +106,11 @@ export default function TestCases({
         <div className="tc-tabs">
           {totalCases.map((tc, i) => {
             const res = resultForTab(i);
-            const statusClass = !res ? "" : res.passed ? "tab-pass" : "tab-fail";
+            const statusClass = !res
+              ? ""
+              : res.passed
+                ? "tab-pass"
+                : "tab-fail";
             const isC = tc._type === "custom";
             return (
               <button
@@ -118,7 +120,9 @@ export default function TestCases({
               >
                 {isC ? `Custom ${i - visibleCount + 1}` : `Case ${i + 1}`}
                 {res && (
-                  <span className={`tc-dot ${res.passed ? "dot-pass" : "dot-fail"}`} />
+                  <span
+                    className={`tc-dot ${res.passed ? "dot-pass" : "dot-fail"}`}
+                  />
                 )}
                 {isC && (
                   <span
@@ -146,25 +150,15 @@ export default function TestCases({
           </button>
         </div>
 
-        <button
-          className={`submit-btn ${isSubmitting ? "submitting" : ""}`}
-          onClick={handleSubmitClick}
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? (
-            <>
-              <span className="spinner" /> Submitting…
-            </>
-          ) : (
-            <>
-              <i className="ti ti-send" aria-hidden="true" /> Submit
-            </>
-          )}
+        <button className="run-btn" onClick={handleRunClick}>
+          Run Custom
         </button>
       </div>
 
       {submitResults && (
-        <div className={`tc-result-banner ${allPassed ? "banner-pass" : "banner-fail"}`}>
+        <div
+          className={`tc-result-banner ${allPassed ? "banner-pass" : "banner-fail"}`}
+        >
           <i
             className={`ti ${allPassed ? "ti-circle-check" : "ti-circle-x"}`}
             aria-hidden="true"
@@ -189,7 +183,7 @@ export default function TestCases({
                     label={field}
                     value={
                       isCustom
-                        ? customCases[customIndex]?._fields[field] ?? ""
+                        ? (customCases[customIndex]?._fields[field] ?? "")
                         : active.input
                     }
                     onChange={(v) => updateCustomField(customIndex, field, v)}
@@ -201,7 +195,7 @@ export default function TestCases({
                   label="Input"
                   value={
                     isCustom
-                      ? customCases[customIndex]?._fields.__raw__ ?? ""
+                      ? (customCases[customIndex]?._fields.__raw__ ?? "")
                       : active.input
                   }
                   onChange={(v) => updateCustomField(customIndex, "__raw__", v)}
@@ -213,7 +207,9 @@ export default function TestCases({
               <FieldRow
                 label="Expected output"
                 value={
-                  isCustom ? customCases[customIndex]?.output ?? "" : active.output
+                  isCustom
+                    ? (customCases[customIndex]?.output ?? "")
+                    : active.output
                 }
                 onChange={(v) => updateCustomExpected(customIndex, v)}
                 readOnly={!isCustom}
@@ -232,11 +228,16 @@ export default function TestCases({
                   {/* Show status badge for non-accepted results */}
                   {!activeResult.passed && activeResult.status && (
                     <span className="tc-status-badge">
-                      {activeResult.status === "time_limit_exceeded" && "⏱ Time Limit Exceeded"}
-                      {activeResult.status === "runtime_error" && "💥 Runtime Error"}
-                      {activeResult.status === "compile_error" && "🔧 Compile Error"}
-                      {activeResult.status === "wrong_answer" && "✗ Wrong Answer"}
-                      {activeResult.status === "output_limit_exceeded" && "📤 Output Limit Exceeded"}
+                      {activeResult.status === "time_limit_exceeded" &&
+                        "⏱ Time Limit Exceeded"}
+                      {activeResult.status === "runtime_error" &&
+                        "💥 Runtime Error"}
+                      {activeResult.status === "compile_error" &&
+                        "🔧 Compile Error"}
+                      {activeResult.status === "wrong_answer" &&
+                        "✗ Wrong Answer"}
+                      {activeResult.status === "output_limit_exceeded" &&
+                        "📤 Output Limit Exceeded"}
                     </span>
                   )}
 
