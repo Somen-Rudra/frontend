@@ -28,7 +28,10 @@ const formatZodErrors = (zodError) => {
     message: issue.message ?? "Validation Error",
     code: issue.code,
   }));
-  return { firstMessage: allErrors[0]?.message ?? "Validation Error", allErrors };
+  return {
+    firstMessage: allErrors[0]?.message ?? "Validation Error",
+    allErrors,
+  };
 };
 
 /**
@@ -47,7 +50,9 @@ export const registerUser = TryCatch(async (req, res) => {
 
   if (!validation.success) {
     const { firstMessage, allErrors } = formatZodErrors(validation.error);
-    return res.status(400).json({ success: false, message: firstMessage, errors: allErrors });
+    return res
+      .status(400)
+      .json({ success: false, message: firstMessage, errors: allErrors });
   }
 
   const { name, email, password } = validation.data;
@@ -65,7 +70,12 @@ export const registerUser = TryCatch(async (req, res) => {
   // Fail fast if user already exists (optimistic check before hashing)
   const existingUser = await User.findOne({ email }).lean();
   if (existingUser) {
-    return res.status(409).json({ success: false, message: "An account with this email already exists." });
+    return res
+      .status(409)
+      .json({
+        success: false,
+        message: "An account with this email already exists.",
+      });
   }
 
   const hashedPassword = await bcrypt.hash(password, 12); // 12 rounds for better security
@@ -75,7 +85,7 @@ export const registerUser = TryCatch(async (req, res) => {
   await redis.set(
     verifyKey,
     JSON.stringify({ name, email, password: hashedPassword }),
-    { EX: 300 } // 5 minutes
+    { EX: 300 }, // 5 minutes
   );
 
   await sendMail({
@@ -89,7 +99,8 @@ export const registerUser = TryCatch(async (req, res) => {
 
   return res.status(200).json({
     success: true,
-    message: "A verification link has been sent to your email. It will expire in 5 minutes.",
+    message:
+      "A verification link has been sent to your email. It will expire in 5 minutes.",
   });
 });
 
@@ -99,7 +110,9 @@ export const verifyUser = TryCatch(async (req, res) => {
   const { token } = req.params;
 
   if (!token || typeof token !== "string") {
-    return res.status(400).json({ success: false, message: "Verification token is required." });
+    return res
+      .status(400)
+      .json({ success: false, message: "Verification token is required." });
   }
 
   const redis = getRedis();
@@ -109,7 +122,8 @@ export const verifyUser = TryCatch(async (req, res) => {
   if (!userDataJson) {
     return res.status(400).json({
       success: false,
-      message: "This verification link has expired or is invalid. Please register again.",
+      message:
+        "This verification link has expired or is invalid. Please register again.",
     });
   }
 
@@ -133,7 +147,12 @@ export const verifyUser = TryCatch(async (req, res) => {
   } catch (err) {
     // Handle race condition: duplicate key error from MongoDB unique index
     if (err.code === 11000) {
-      return res.status(409).json({ success: false, message: "An account with this email already exists." });
+      return res
+        .status(409)
+        .json({
+          success: false,
+          message: "An account with this email already exists.",
+        });
     }
     throw err; // Re-throw unexpected errors for TryCatch middleware to handle
   }
@@ -147,7 +166,9 @@ export const loginUser = TryCatch(async (req, res) => {
 
   if (!validation.success) {
     const { firstMessage, allErrors } = formatZodErrors(validation.error);
-    return res.status(400).json({ success: false, message: firstMessage, errors: allErrors });
+    return res
+      .status(400)
+      .json({ success: false, message: firstMessage, errors: allErrors });
   }
 
   const { email, password } = validation.data;
@@ -167,13 +188,16 @@ export const loginUser = TryCatch(async (req, res) => {
 
   // Use constant-time comparison path regardless of whether user exists
   // to prevent user enumeration via timing attacks
-  const dummyHash = "$2b$12$invalidhashusedfortimingprotection000000000000000000000";
+  const dummyHash =
+    "$2b$12$invalidhashusedfortimingprotection000000000000000000000";
   const passwordToCompare = user ? user.password : dummyHash;
   const isMatch = await bcrypt.compare(password, passwordToCompare);
 
   if (!user || !isMatch) {
     await redis.set(rateLimitKey, "true", { EX: 60 });
-    return res.status(401).json({ success: false, message: "Invalid credentials." });
+    return res
+      .status(401)
+      .json({ success: false, message: "Invalid credentials." });
   }
 
   // Invalidate any existing OTP for this email before issuing a new one
@@ -204,12 +228,16 @@ export const verifyOtp = TryCatch(async (req, res) => {
   const { email, otp } = sanitize(req.body);
 
   if (!email || !otp) {
-    return res.status(400).json({ success: false, message: "Email and OTP are required." });
+    return res
+      .status(400)
+      .json({ success: false, message: "Email and OTP are required." });
   }
 
   // Validate OTP format: must be exactly 6 digits
   if (!/^\d{6}$/.test(otp)) {
-    return res.status(400).json({ success: false, message: "OTP must be a 6-digit number." });
+    return res
+      .status(400)
+      .json({ success: false, message: "OTP must be a 6-digit number." });
   }
 
   const redis = getRedis();
@@ -227,7 +255,12 @@ export const verifyOtp = TryCatch(async (req, res) => {
   const storedOtpString = await redis.get(otpKey);
 
   if (!storedOtpString) {
-    return res.status(400).json({ success: false, message: "OTP has expired. Please login again." });
+    return res
+      .status(400)
+      .json({
+        success: false,
+        message: "OTP has expired. Please login again.",
+      });
   }
 
   const storedOtp = JSON.parse(storedOtpString);
@@ -267,20 +300,22 @@ export const myProfile = TryCatch(async (req, res) => {
 
 export const refreshToken = TryCatch(async (req, res) => {
   const token = req.cookies.refreshToken;
-
-  if (!token) {
-    return res.status(401).json({ success: false, message: "Refresh token is missing." });
-  }
+  if (!token)
+    return res
+      .status(401)
+      .json({ success: false, message: "Refresh token is missing." });
 
   const decoded = await verifyRefreshToken(token);
+  if (!decoded)
+    return res
+      .status(401)
+      .json({ success: false, message: "Invalid or expired refresh token." });
 
-  if (!decoded) {
-    return res.status(401).json({ success: false, message: "Invalid or expired refresh token." });
-  }
+  // Rotate: revoke old, issue new pair
+  await revokeRefreshToken(decoded._id);
+  await generateToken(decoded._id, res);
 
-  await generateAccessToken(decoded._id, res);
-
-  return res.status(200).json({ success: true, message: "Access token refreshed." });
+  return res.status(200).json({ success: true, message: "Tokens refreshed." });
 });
 
 // ─── Logout ───────────────────────────────────────────────────────────────────
@@ -299,5 +334,7 @@ export const logoutUser = TryCatch(async (req, res) => {
   // Clear user cache from Redis
   await redis.del(`user:${userId}`);
 
-  return res.status(200).json({ success: true, message: "Logged out successfully." });
+  return res
+    .status(200)
+    .json({ success: true, message: "Logged out successfully." });
 });

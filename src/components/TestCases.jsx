@@ -79,15 +79,6 @@ export default function TestCases({ problem, onRun, submitResults }) {
     );
   }
 
-  function handleRunClick() {
-    const builtCustom = customCases.map((cc) => ({
-      input: buildStdin(inputFields, cc._fields),
-      output: cc.output,
-    }));
-
-    onRun?.(builtCustom);
-  }
-
   const active = totalCases[activeTab];
   const activeResult = resultForTab(activeTab);
   const isCustom = active?._type === "custom";
@@ -149,10 +140,6 @@ export default function TestCases({ problem, onRun, submitResults }) {
             + Add
           </button>
         </div>
-
-        <button className="run-btn" onClick={handleRunClick}>
-          Run Custom
-        </button>
       </div>
 
       {submitResults && (

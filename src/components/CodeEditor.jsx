@@ -138,61 +138,62 @@ export default function CodeEditor({
               ))}
             </select>
           </div>
-
-          <button
-            className={`run-button ${isRunning ? "running" : ""}`}
-            onClick={handleRun}
-            disabled={isRunning || isSubmitting}
-          >
-            {isRunning ? (
-              <>
-                <span
-                  style={{
-                    width: 12,
-                    height: 12,
-                    border: "2px solid rgba(255,255,255,0.3)",
-                    borderTopColor: "#fff",
-                    borderRadius: "50%",
-                    display: "inline-block",
-                    animation: "spin 0.7s linear infinite",
-                  }}
-                />
-                Running…
-              </>
-            ) : (
-              <>
-                <VscPlay size={16} />
-                Run
-              </>
-            )}
-          </button>
-          {/* Submit button — new */}
-          <button
-            className={`submit-button ${isSubmitting ? "submitting" : ""}`}
-            onClick={handleSubmit}
-            disabled={isRunning || isSubmitting} // ← disable during run too
-          >
-            {isSubmitting ? (
-              <>
-                <span
-                  style={{
-                    width: 12,
-                    height: 12,
-                    border: "2px solid rgba(255,255,255,0.3)",
-                    borderTopColor: "#fff",
-                    borderRadius: "50%",
-                    display: "inline-block",
-                    animation: "spin 0.7s linear infinite",
-                  }}
-                />
-                Submitting…
-              </>
-            ) : (
-              <>
-                <i className="ti ti-send" aria-hidden="true" /> Submit
-              </>
-            )}
-          </button>
+          <div className="editor-buttons">
+            <button
+              className={`run-button ${isRunning ? "running" : ""}`}
+              onClick={handleRun}
+              disabled={isRunning || isSubmitting}
+            >
+              {isRunning ? (
+                <>
+                  <span
+                    style={{
+                      width: 12,
+                      height: 12,
+                      border: "2px solid rgba(255,255,255,0.3)",
+                      borderTopColor: "#fff",
+                      borderRadius: "50%",
+                      display: "inline-block",
+                      animation: "spin 0.7s linear infinite",
+                    }}
+                  />
+                  Running…
+                </>
+              ) : (
+                <>
+                  <VscPlay size={16} />
+                  Run
+                </>
+              )}
+            </button>
+            {/* Submit button — new */}
+            <button
+              className={`submit-button ${isSubmitting ? "submitting" : ""}`}
+              onClick={handleSubmit}
+              disabled={isRunning || isSubmitting} // ← disable during run too
+            >
+              {isSubmitting ? (
+                <>
+                  <span
+                    style={{
+                      width: 12,
+                      height: 12,
+                      border: "2px solid rgba(255,255,255,0.3)",
+                      borderTopColor: "#fff",
+                      borderRadius: "50%",
+                      display: "inline-block",
+                      animation: "spin 0.7s linear infinite",
+                    }}
+                  />
+                  Submitting…
+                </>
+              ) : (
+                <>
+                  <i className="ti ti-send" aria-hidden="true" /> Submit
+                </>
+              )}
+            </button>
+          </div>
         </div>
 
         <div className="monaco-container">

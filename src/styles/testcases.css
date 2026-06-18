@@ -2,8 +2,8 @@
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: #0a0202;
-  font-family: "Inter", sans-serif;
+  background: var(--bg-primary);
+  font-family: var(--font-sans);
   overflow: hidden;
 }
 
@@ -11,9 +11,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
-  border-bottom: 1px solid rgba(232, 0, 28, 0.15);
-  gap: 8px;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border-primary);
+  gap: var(--space-2);
   flex-shrink: 0;
 }
 
@@ -25,36 +25,37 @@
 
 .tc-tab {
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: #8a8a8a;
+  border: 1px solid var(--border-primary);
+  color: var(--tab-inactive);
   font-size: 12px;
   padding: 4px 12px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: 6px;
-  transition: all 0.15s ease;
-  font-family: "Inter", sans-serif;
+  transition: all var(--transition-fast);
+  font-family: var(--font-sans);
 }
 
 .tc-tab:hover {
-  border-color: rgba(232, 0, 28, 0.3);
-  color: #f2f2f2;
+  border-color: var(--color-primary-border);
+  color: var(--tab-inactive-hover-text);
+  background: var(--tab-inactive-hover-bg);
 }
 
 .tc-tab.active {
-  border-color: rgba(232, 0, 28, 0.5);
-  color: #f2f2f2;
-  background: rgba(232, 0, 28, 0.08);
+  border-color: var(--color-primary);
+  color: var(--text-primary);
+  background: var(--color-primary-light);
 }
 
 .tc-tab.tab-pass {
-  border-color: rgba(0, 255, 136, 0.3);
+  border-color: var(--success);
 }
 
 .tc-tab.tab-fail {
-  border-color: rgba(255, 61, 87, 0.3);
+  border-color: var(--danger);
 }
 
 .tc-dot {
@@ -65,34 +66,36 @@
 }
 
 .dot-pass {
-  background: #00ff88;
-  box-shadow: 0 0 4px rgba(0, 255, 136, 0.6);
+  background: var(--success);
+  box-shadow: 0 0 4px color-mix(in srgb, var(--success) 60%, transparent);
 }
 
 .dot-fail {
-  background: #ff3d57;
-  box-shadow: 0 0 4px rgba(255, 61, 87, 0.6);
+  background: var(--danger);
+  box-shadow: 0 0 4px color-mix(in srgb, var(--danger) 60%, transparent);
 }
 
 .submit-btn {
   display: flex;
   align-items: center;
   gap: 6px;
-  background: #e8001c;
+  background: var(--color-primary);
   border: none;
-  color: #fff;
+  color: var(--text-inverse);
   font-size: 13px;
   font-weight: 500;
   padding: 6px 16px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   cursor: pointer;
-  font-family: "Inter", sans-serif;
-  transition: background 0.15s ease, opacity 0.15s ease;
+  font-family: var(--font-sans);
+  transition:
+    background var(--transition-fast),
+    opacity var(--transition-fast);
   flex-shrink: 0;
 }
 
 .submit-btn:hover:not(:disabled) {
-  background: #a50014;
+  background: var(--color-primary-hover);
 }
 
 .submit-btn:disabled {
@@ -107,7 +110,7 @@
 .spinner {
   width: 12px;
   height: 12px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
+  border: 2px solid rgb(255 255 255 / 30%);
   border-top-color: #fff;
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
@@ -115,11 +118,13 @@
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .tc-body {
-  padding: 16px;
+  padding: var(--space-4);
   overflow-y: auto;
   flex: 1;
   display: flex;
@@ -128,9 +133,9 @@
 }
 
 .tc-empty {
-  padding: 32px;
+  padding: var(--space-8);
   text-align: center;
-  color: #8a8a8a;
+  color: var(--text-muted);
   font-size: 13px;
 }
 
@@ -143,34 +148,34 @@
 .tc-label {
   font-size: 11px;
   font-weight: 500;
-  color: #8a8a8a;
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
 
 .tc-pre {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 4px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-xs);
   padding: 10px 12px;
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--font-mono);
   font-size: 13px;
-  color: #f2f2f2;
+  color: var(--text-primary);
   white-space: pre-wrap;
-  word-break: break-all;
+  word-break: break-word;
   margin: 0;
 }
 
 .tc-pre.pre-pass {
-  border-color: rgba(0, 255, 136, 0.25);
-  background: rgba(0, 255, 136, 0.04);
-  color: #00ff88;
+  border-color: var(--success);
+  background: color-mix(in srgb, var(--success) 10%, transparent);
+  color: var(--success);
 }
 
 .tc-pre.pre-fail {
-  border-color: rgba(255, 61, 87, 0.25);
-  background: rgba(255, 61, 87, 0.04);
-  color: #ff3d57;
+  border-color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+  color: var(--danger);
 }
 
 .tc-verdict {
@@ -182,17 +187,17 @@
 }
 
 .verdict-pass {
-  color: #00ff88;
+  color: var(--success);
 }
 
 .verdict-fail {
-  color: #ff3d57;
+  color: var(--danger);
 }
 
 .verdict-time {
   margin-left: auto;
   font-size: 11px;
-  color: #8a8a8a;
+  color: var(--text-muted);
   font-weight: 400;
 }
 
@@ -201,59 +206,61 @@
   align-items: center;
   gap: 10px;
   padding: 10px 12px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 6px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-sm);
   margin-top: 4px;
 }
 
 .summary-pass {
   font-size: 13px;
-  color: #f2f2f2;
+  color: var(--text-primary);
   font-weight: 500;
 }
 
 .summary-badge {
   font-size: 11px;
   padding: 3px 10px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   font-weight: 500;
   margin-left: auto;
 }
 
 .badge-ac {
-  background: rgba(0, 255, 136, 0.1);
-  color: #00ff88;
-  border: 1px solid rgba(0, 255, 136, 0.25);
+  background: color-mix(in srgb, var(--success) 10%, transparent);
+  color: var(--success);
+  border: 1px solid color-mix(in srgb, var(--success) 30%, transparent);
 }
 
 .badge-wa {
-  background: rgba(255, 61, 87, 0.1);
-  color: #ff3d57;
-  border: 1px solid rgba(255, 61, 87, 0.25);
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+  color: var(--danger);
+  border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent);
 }
 
-/* Editable textarea inside test cases */
 .tc-textarea {
   width: 100%;
-  background: #0d0d0d;
-  color: #e0e0e0;
-  border: 1px solid #2a2a2a;
-  border-radius: 6px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-sm);
   padding: 8px 10px;
-  font-family: monospace;
+  font-family: var(--font-mono);
   font-size: 13px;
   resize: vertical;
   box-sizing: border-box;
   line-height: 1.5;
+  transition:
+    border-color var(--transition-fast),
+    background var(--transition-fast);
 }
 
 .tc-textarea:focus {
   outline: none;
-  border-color: #e8001c44;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary-light);
 }
 
-/* Custom case tab variant */
 .tc-tab-custom {
   border-style: dashed !important;
   gap: 6px;
@@ -268,24 +275,62 @@
   border-radius: 50%;
   font-size: 12px;
   line-height: 1;
-  color: #888;
+  color: var(--text-muted);
   cursor: pointer;
   margin-left: 2px;
+  transition: all var(--transition-fast);
 }
 
 .tc-tab-close:hover {
-  color: #e8001c;
-  background: rgba(232, 0, 28, 0.1);
+  color: var(--color-primary);
+  background: var(--color-primary-light);
 }
 
 .tc-tab-add {
   border-style: solid;
-  color: #666;
+  color: var(--text-muted);
   font-size: 12px;
   padding: 4px 10px;
 }
 
 .tc-tab-add:hover {
-  color: #e8001c;
-  border-color: #e8001c44;
+  color: var(--color-primary);
+  border-color: var(--color-primary-border);
+}
+
+.tc-status-badge {
+  margin-top: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-xs);
+  font-size: 12px;
+  font-weight: 500;
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-primary);
+}
+
+.tc-result-banner {
+  margin: var(--space-3);
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.banner-pass {
+  background: color-mix(in srgb, var(--success) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--success) 35%, transparent);
+  color: var(--success);
+}
+
+.banner-fail {
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent);
+  color: var(--danger);
 }

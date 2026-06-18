@@ -135,6 +135,13 @@
   z-index: 1;
 }
 
+.editor-buttons {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+}
+
 @keyframes pulse {
   0% {
     opacity: 0.3;
