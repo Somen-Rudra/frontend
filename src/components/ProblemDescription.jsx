@@ -189,7 +189,7 @@ const LoadingSkeleton = () => (
 /* =========================================
    MAIN COMPONENT
 ========================================= */
-const ProblemDescription = ({ problem = DEMO_PROBLEM }) => {
+const ProblemDescription = ({ problem }) => {
   const [openSections, setOpenSections] = useState({
     examples: true,
     constraints: true,

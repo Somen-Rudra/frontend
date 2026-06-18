@@ -86,6 +86,7 @@ export default function Workspace() {
         setIsErrorOutput(false);
         const res = await API.get(`/problemSet/${slug}`);
         setProblem(res.data.data);
+        console.log(res.data);
       } catch (error) {
         console.error(error.message);
       } finally {
@@ -177,6 +178,7 @@ export default function Workspace() {
             onRun={handleRun}
             isRunning={isRunning}
             onCodeChange={handleCodeChange}
+            problem={problem}
           />
         );
       case "Output":

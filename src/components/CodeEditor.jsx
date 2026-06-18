@@ -19,11 +19,11 @@ function isDarkMode() {
   const html = document.documentElement;
   const body = document.body;
 
-  if (html.dataset.theme === "dark")  return true;
+  if (html.dataset.theme === "dark") return true;
   if (html.dataset.theme === "light") return false;
-  if (html.classList.contains("dark"))  return true;
+  if (html.classList.contains("dark")) return true;
   if (html.classList.contains("light")) return false;
-  if (body.classList.contains("dark"))  return true;
+  if (body.classList.contains("dark")) return true;
   if (body.classList.contains("light")) return false;
 
   // last resort — OS preference
@@ -34,9 +34,14 @@ function resolveEditorTheme() {
   return isDarkMode() ? "crimson" : "daybreak";
 }
 
-export default function CodeEditor({ onRun, onCodeChange, isRunning }) {
-  const [langKey, setLangKey]         = useState("cpp");
-  const [code, setCode]               = useState("");
+export default function CodeEditor({
+  problem,
+  onRun,
+  onCodeChange,
+  isRunning,
+}) {
+  const [langKey, setLangKey] = useState("cpp");
+  const [code, setCode] = useState("");
   const [editorTheme, setEditorTheme] = useState(resolveEditorTheme);
 
   useEffect(() => {
@@ -45,6 +50,7 @@ export default function CodeEditor({ onRun, onCodeChange, isRunning }) {
     // Watch data-theme AND class changes on <html> and <body>
     const observer = new MutationObserver(update);
     const opts = { attributes: true, attributeFilter: ["class", "data-theme"] };
+
     observer.observe(document.documentElement, opts);
     observer.observe(document.body, opts);
 
@@ -58,14 +64,63 @@ export default function CodeEditor({ onRun, onCodeChange, isRunning }) {
     };
   }, []);
 
+  // Initialize editor when problem data arrives
+  useEffect(() => {
+    if (!problem?.languages) return;
+
+    const availableLanguages = Object.keys(problem.languages);
+
+    if (!availableLanguages.length) return;
+
+    const defaultLang = availableLanguages.includes("cpp")
+      ? "cpp"
+      : availableLanguages[0];
+
+    setLangKey(defaultLang);
+
+    const starterCode =
+      problem.languages?.[defaultLang]?.codeStub || "";
+
+    setCode(starterCode);
+
+    onCodeChange?.(
+      starterCode,
+      LANGUAGES[defaultLang]?.judgeKey || defaultLang,
+    );
+  }, [problem]);
+
   function handleCodeChange(value) {
     const newCode = value || "";
+
     setCode(newCode);
-    onCodeChange?.(newCode, LANGUAGES[langKey]?.judgeKey || "cpp");
+
+    onCodeChange?.(
+      newCode,
+      LANGUAGES[langKey]?.judgeKey || langKey,
+    );
+  }
+
+  function handleLanguageChange(e) {
+    const newLang = e.target.value;
+
+    setLangKey(newLang);
+
+    const starterCode =
+      problem?.languages?.[newLang]?.codeStub || "";
+
+    setCode(starterCode);
+
+    onCodeChange?.(
+      starterCode,
+      LANGUAGES[newLang]?.judgeKey || newLang,
+    );
   }
 
   function handleRun() {
-    onRun?.(code, LANGUAGES[langKey]?.judgeKey || "cpp");
+    onRun?.(
+      code,
+      LANGUAGES[langKey]?.judgeKey || langKey,
+    );
   }
 
   return (
@@ -78,12 +133,12 @@ export default function CodeEditor({ onRun, onCodeChange, isRunning }) {
             <select
               id="lang-select"
               value={langKey}
-              onChange={(e) => setLangKey(e.target.value)}
+              onChange={handleLanguageChange}
               className="styled-select"
             >
-              {Object.entries(LANGUAGES).map(([key, lang]) => (
+              {Object.keys(problem?.languages || {}).map((key) => (
                 <option key={key} value={key}>
-                  {lang.name}
+                  {LANGUAGES[key]?.name || key}
                 </option>
               ))}
             </select>
@@ -121,7 +176,7 @@ export default function CodeEditor({ onRun, onCodeChange, isRunning }) {
         <div className="monaco-container">
           <Editor
             height="100%"
-            language={LANGUAGES[langKey]?.monacoLang || "cpp"}
+            language={LANGUAGES[langKey]?.monacoLang || langKey}
             value={code}
             onChange={handleCodeChange}
             beforeMount={defineEditorThemes}

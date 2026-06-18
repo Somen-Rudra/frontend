@@ -20,7 +20,7 @@ import "../styles/sidebar.css";
 
 export const routeMap = {
   dashboard: { label: "Dashboard", path: "/", icon: MdDashboard },
-  problems: { label: "Problems", path: "/problems", icon: MdCode },
+  problems: { label: "Problems", path: "/problemSet", icon: MdCode },
   contests: { label: "Contests", path: "/contests", icon: MdEmojiEvents },
   companies: { label: "Companies", path: "/companies", icon: MdBusiness },
   interviews: { label: "Interviews", path: "/interviews", icon: MdMessage },

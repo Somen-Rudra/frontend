@@ -259,7 +259,7 @@ function ProblemList({
                 <tr key={p.problemNumber}>
                   <td className="ps-num">{p.problemNumber}</td>
                   <td className="ps-title-cell">
-                    <Link className="problem-link" to={`/problems/:${p.slug}`}>
+                    <Link className="problem-link" to={`/problemSet/${p.slug}`}>
                       {p.title}
                       {p.isPremium && <span className="ps-premium-icon">🔒</span>}
                     </Link>

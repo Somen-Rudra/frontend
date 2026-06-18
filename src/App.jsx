@@ -35,9 +35,9 @@ export default function App() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/companies" element={<Company />} />
             <Route path="/profile" element={<Profile />} />
-            <Route path="/problems" element={<ProblemSet />} />
+            <Route path="/problemSet" element={<ProblemSet />} />
             <Route path="/ai-features" element={<AIFeaturesPage />} />
-            <Route path="/problems/:problem" element={<Workspace />} />
+            <Route path="/problemSet/:slug" element={<Workspace />} />
             <Route
               path="/ai-features/code-explanation"
               element={<AICodeExplanation />}
