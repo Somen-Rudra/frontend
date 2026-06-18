@@ -3,8 +3,8 @@ import "../styles/profile.css";
 
 /* ─── Mock data ─── */
 const USER = {
-  name: "Arjun Sharma",
-  handle: "@arjun_codes",
+  name: "PRIYOTOSH NIGGA",
+  handle: "@bantupriyo_codes",
   avatar: "AS",
   rank: 1284,
   country: "India",

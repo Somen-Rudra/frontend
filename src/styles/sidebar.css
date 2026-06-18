@@ -73,7 +73,6 @@
   background: var(--bg-hover);
 }
 
-/* When collapsed the header only has the toggle, center it */
 .sidebar--collapsed .sidebar__header {
   justify-content: center;
 }
@@ -143,7 +142,6 @@
   flex-direction: column;
   gap: 2px;
   flex-shrink: 0;
-  overflow: hidden;
 }
 
 .sidebar__link {
@@ -162,7 +160,6 @@
     background var(--transition-fast),
     color var(--transition-fast);
   position: relative;
-  overflow: hidden;
 }
 
 .sidebar__link:hover {
@@ -202,10 +199,38 @@
   flex-shrink: 0;
 }
 
-/* Collapsed: center the icon */
+/* Collapsed: center the icon, allow overflow visible for tooltip */
 .sidebar--collapsed .sidebar__link {
   justify-content: center;
   padding: 7px 0;
+  overflow: visible;
+  position: relative;
+}
+
+/* ── Collapsed tooltips ── */
+.sidebar--collapsed .sidebar__link::after {
+  content: attr(data-label);
+  position: absolute;
+  left: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 5px 10px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--border-primary);
+  box-shadow: var(--shadow-md);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+  z-index: 9998;
+}
+
+.sidebar--collapsed .sidebar__link:hover::after {
+  opacity: 1;
 }
 
 /* ── Spacer ── */
@@ -326,183 +351,21 @@
   overflow-x: hidden;
 }
 
-/* ═══════════════════════════════════════
-   PROFILE POPUP
-═══════════════════════════════════════ */
-
-.sidebar__avatar-wrap {
-  position: relative;
-}
-
-/* Popup anchors to bottom-left of the avatar,
-   grows upward so it never clips off-screen */
-.prof-popup {
-   position: fixed;   /* Change from absolute to fixed */
-  bottom: 60px;      /* Distance from bottom of viewport */
-  left: 220px;       /* Match sidebar width */
-  width: 240px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-primary);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-lg);
-  z-index: 9999;
-  overflow: hidden;
-  animation: popup-in 0.15s ease;
-}
-
-/* When sidebar is collapsed the popup shifts right so it
-   clears the narrow 56px rail */
-.prof-popup--collapsed {
-  left: 56px;
-}
-
-@keyframes popup-in {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* ── Header ── */
-.prof-popup__header {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-4);
-}
-
-.prof-popup__avatar {
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  background: var(--color-primary);
-  color: #fff;
-  font-size: 13px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.prof-popup__info {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.prof-popup__name {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.prof-popup__handle {
-  font-size: 11px;
-  color: var(--text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* ── Plan row ── */
-.prof-popup__plan {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 0 var(--space-4) var(--space-3);
-  font-size: 11px;
-  color: var(--text-muted);
-}
-
-.prof-popup__plan .ti {
-  color: var(--medium);
-  font-size: 13px;
-}
-
-.prof-popup__upgrade {
-  margin-left: auto;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--color-primary);
-  text-decoration: none;
-  padding: 2px 8px;
-  border: 1px solid var(--color-primary-border);
-  border-radius: 99px;
+/* ── Resize handle ── */
+.sidebar__resize-handle {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 100;
+  background: transparent;
   transition: background var(--transition-fast);
 }
 
-.prof-popup__upgrade:hover {
-  background: var(--color-primary-light);
-}
-
-/* ── Divider ── */
-.prof-popup__divider {
-  height: 1px;
-  background: var(--border-primary);
-  margin: 0;
-}
-
-/* ── Section + items ── */
-.prof-popup__section {
-  padding: var(--space-1) 0;
-}
-
-.prof-popup__item {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  width: 100%;
-  padding: 8px var(--space-4);
-  background: none;
-  border: none;
-  font-family: var(--font-sans);
-  font-size: 13px;
-  color: var(--text-secondary);
-  cursor: pointer;
-  text-align: left;
-  transition:
-    background var(--transition-fast),
-    color var(--transition-fast);
-}
-
-.prof-popup__item .ti {
-  font-size: 16px;
-  color: var(--text-muted);
-  flex-shrink: 0;
-  transition: color var(--transition-fast);
-}
-
-.prof-popup__item:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-}
-
-.prof-popup__item:hover .ti {
-  color: var(--text-secondary);
-}
-
-/* Danger — logout */
-.prof-popup__item--danger {
-  color: var(--hard);
-}
-
-.prof-popup__item--danger .ti {
-  color: var(--hard);
-}
-
-.prof-popup__item--danger:hover {
-  background: var(--hard-bg);
-  color: var(--hard);
-}
-
-.prof-popup__item--danger:hover .ti {
-  color: var(--hard);
+.sidebar__resize-handle:hover,
+.sidebar__resize-handle:active {
+  background: var(--color-primary);
+  opacity: 0.35;
 }

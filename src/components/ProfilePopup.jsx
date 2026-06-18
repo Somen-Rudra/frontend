@@ -4,8 +4,8 @@ import { Link, useNavigate } from "react-router-dom";
 import "../styles/profile-popup.css";
 
 const USER = {
-  name: "Arjun Sharma",
-  handle: "@arjun_codes",
+  name: "PRIYOTOSH",
+  handle: "@priyo_codes",
   avatar: "AS",
   plan: "Free",
 };
