@@ -53,7 +53,7 @@ export const getProblems = async (req, res) => {
     } = req.query;
 
     const currentPage = Math.max(parseInt(page, 10), 1);
-    const pageLimit   = Math.min(Math.max(parseInt(limit, 10), 1), 100);
+    const pageLimit = Math.min(Math.max(parseInt(limit, 10), 1), 100);
 
     /* ─── Filters ─────────────────────────────────────────── */
 
@@ -69,7 +69,8 @@ export const getProblems = async (req, res) => {
         .map((d) => d.trim().toLowerCase())
         .filter(Boolean);
 
-      filter.difficulty = diffList.length === 1 ? diffList[0] : { $in: diffList };
+      filter.difficulty =
+        diffList.length === 1 ? diffList[0] : { $in: diffList };
     }
 
     // Boolean: premium
@@ -87,7 +88,7 @@ export const getProblems = async (req, res) => {
       const query = search.trim();
       filter.$or = [
         { title: { $regex: query, $options: "i" } },
-        { slug:  { $regex: query, $options: "i" } },
+        { slug: { $regex: query, $options: "i" } },
       ];
     }
 
@@ -128,17 +129,38 @@ export const getProblems = async (req, res) => {
     let sortObj = {};
 
     switch (sort) {
-      case "acceptanceAsc":  sortObj = { acceptancePercentage: 1 };              break;
-      case "acceptanceDesc": sortObj = { acceptancePercentage: -1 };             break;
-      case "titleAsc":       sortObj = { title: 1 };                             break;
-      case "titleDesc":      sortObj = { title: -1 };                            break;
-      case "difficultyAsc":  sortObj = { difficulty: 1, problemNumber: 1 };      break;
-      case "difficultyDesc": sortObj = { difficulty: -1, problemNumber: 1 };     break;
-      case "numberAsc":      sortObj = { problemNumber: 1 };                     break;
-      case "numberDesc":     sortObj = { problemNumber: -1 };                    break;
-      case "newest":         sortObj = { _id: -1 };                              break;
-      case "oldest":         sortObj = { _id: 1 };                               break;
-      default:               sortObj = { problemNumber: 1 };
+      case "acceptanceAsc":
+        sortObj = { acceptancePercentage: 1 };
+        break;
+      case "acceptanceDesc":
+        sortObj = { acceptancePercentage: -1 };
+        break;
+      case "titleAsc":
+        sortObj = { title: 1 };
+        break;
+      case "titleDesc":
+        sortObj = { title: -1 };
+        break;
+      case "difficultyAsc":
+        sortObj = { difficulty: 1, problemNumber: 1 };
+        break;
+      case "difficultyDesc":
+        sortObj = { difficulty: -1, problemNumber: 1 };
+        break;
+      case "numberAsc":
+        sortObj = { problemNumber: 1 };
+        break;
+      case "numberDesc":
+        sortObj = { problemNumber: -1 };
+        break;
+      case "newest":
+        sortObj = { _id: -1 };
+        break;
+      case "oldest":
+        sortObj = { _id: 1 };
+        break;
+      default:
+        sortObj = { problemNumber: 1 };
     }
 
     /* ─── Query ───────────────────────────────────────────── */
@@ -168,66 +190,102 @@ export const getProblems = async (req, res) => {
     });
   } catch (error) {
     console.error("getProblems error:", error);
-    return res.status(500).json({ success: false, message: "Internal Server Error" });
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal Server Error" });
   }
 };
 
 // ─── GET /problemSet/:slug ────────────────────────────────────────────────────
 export const getProblemBySlug = async (req, res) => {
   try {
-    const slug = req.params.slug?.trim();
+    const { slug } = req.params;
 
     if (!slug) {
-      return res.status(400).json({ success: false, message: "Slug is required" });
+      return res.status(400).json({
+        success: false,
+        message: "Slug is required",
+      });
     }
 
-    const problem = await Problem.findOne({ slug, isPublished: true })
-      .select(`
-        title problemNumber slug difficulty topics acceptanceRate
-        acceptancePercentage examples constraints followUps hints
-        companies similarQuestions description languages
-        testCases timeLimit memoryLimit isPremium
-      `)
+    const problem = await Problem.findOne({
+      slug: slug.trim(),
+      isPublished: true,
+    })
+      .select(
+        `
+        title
+        problemNumber
+        slug
+        difficulty
+        topics
+        acceptanceRate
+        acceptancePercentage
+        examples
+        constraints
+        followUps
+        hints
+        companies
+        similarQuestions
+        description
+        languages
+        visibleTestCases
+        timeLimit
+        memoryLimit
+        isPremium
+      `,
+      )
       .populate("similarQuestions", "problemNumber title slug difficulty")
       .lean();
 
     if (!problem) {
-      return res.status(404).json({ success: false, message: "Problem not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Problem not found",
+      });
     }
-
-    // Split test cases into visible / hidden for the client
-    const visibleTestCases = problem.testCases.filter((tc) => !tc.isHidden);
-    const hiddenTestCases  = problem.testCases.filter((tc) => tc.isHidden);
 
     return res.status(200).json({
       success: true,
-      data: { ...problem, visibleTestCases, hiddenTestCases },
+      data: problem,
     });
   } catch (error) {
     console.error("getProblemBySlug error:", error);
-    return res.status(500).json({ success: false, message: "Internal Server Error" });
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
   }
 };
-
 // ─── GET /problemSet/number/:number ──────────────────────────────────────────
 export const getProblemByNumber = async (req, res) => {
   try {
     const number = Number(req.params.number);
 
     if (isNaN(number)) {
-      return res.status(400).json({ success: false, message: "Invalid problem number" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid problem number" });
     }
 
-    const problem = await Problem.findOne({ problemNumber: number, isPublished: true }).lean();
+    const problem = await Problem.findOne({
+      problemNumber: number,
+      isPublished: true,
+    }).lean();
 
     if (!problem) {
-      return res.status(404).json({ success: false, message: "Problem not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Problem not found" });
     }
 
     return res.status(200).json({ success: true, data: problem });
   } catch (error) {
     console.error("getProblemByNumber error:", error);
-    return res.status(500).json({ success: false, message: "Internal Server Error" });
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal Server Error" });
   }
 };
 
@@ -248,13 +306,17 @@ export const updateProblem = async (req, res) => {
     const slug = req.params.slug?.trim();
 
     if (!slug) {
-      return res.status(400).json({ success: false, message: "Slug is required" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Slug is required" });
     }
 
     const problem = await Problem.findOne({ slug });
 
     if (!problem) {
-      return res.status(404).json({ success: false, message: "Problem not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Problem not found" });
     }
 
     // Prevent the slug from being overwritten via the request body
@@ -275,19 +337,27 @@ export const deleteProblem = async (req, res) => {
     const slug = req.params.slug?.trim();
 
     if (!slug) {
-      return res.status(400).json({ success: false, message: "Slug is required" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Slug is required" });
     }
 
     const deleted = await Problem.findOneAndDelete({ slug });
 
     if (!deleted) {
-      return res.status(404).json({ success: false, message: "Problem not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Problem not found" });
     }
 
-    return res.status(200).json({ success: true, message: "Problem deleted successfully" });
+    return res
+      .status(200)
+      .json({ success: true, message: "Problem deleted successfully" });
   } catch (error) {
     console.error("deleteProblem error:", error);
-    return res.status(500).json({ success: false, message: "Internal Server Error" });
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal Server Error" });
   }
 };
 
@@ -306,22 +376,24 @@ export const getProblemMetadata = async (req, res) => {
         companies: companies.sort(),
         difficulties: ["easy", "medium", "hard"],
         sortOptions: [
-          { value: "numberAsc",      label: "Number ↑" },
-          { value: "numberDesc",     label: "Number ↓" },
-          { value: "titleAsc",       label: "Title A→Z" },
-          { value: "titleDesc",      label: "Title Z→A" },
-          { value: "difficultyAsc",  label: "Difficulty ↑" },
+          { value: "numberAsc", label: "Number ↑" },
+          { value: "numberDesc", label: "Number ↓" },
+          { value: "titleAsc", label: "Title A→Z" },
+          { value: "titleDesc", label: "Title Z→A" },
+          { value: "difficultyAsc", label: "Difficulty ↑" },
           { value: "difficultyDesc", label: "Difficulty ↓" },
-          { value: "acceptanceAsc",  label: "Acceptance ↑" },
+          { value: "acceptanceAsc", label: "Acceptance ↑" },
           { value: "acceptanceDesc", label: "Acceptance ↓" },
-          { value: "newest",         label: "Newest first" },
-          { value: "oldest",         label: "Oldest first" },
+          { value: "newest", label: "Newest first" },
+          { value: "oldest", label: "Oldest first" },
         ],
       },
     });
   } catch (error) {
     console.error("getProblemMetadata error:", error);
-    return res.status(500).json({ success: false, message: "Internal Server Error" });
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal Server Error" });
   }
 };
 
@@ -336,7 +408,9 @@ export const getFeaturedProblems = async (req, res) => {
     return res.status(200).json({ success: true, data: problems });
   } catch (error) {
     console.error("getFeaturedProblems error:", error);
-    return res.status(500).json({ success: false, message: "Internal Server Error" });
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal Server Error" });
   }
 };
 
@@ -365,43 +439,61 @@ export const getRandomProblem = async (req, res) => {
       { $sample: { size: 1 } },
       {
         $project: {
-          problemNumber: 1, title: 1, slug: 1, difficulty: 1,
-          topics: 1, acceptancePercentage: 1, isPremium: 1, isFeatured: 1,
+          problemNumber: 1,
+          title: 1,
+          slug: 1,
+          difficulty: 1,
+          topics: 1,
+          acceptancePercentage: 1,
+          isPremium: 1,
+          isFeatured: 1,
         },
       },
     ]);
 
     if (!problems.length) {
-      return res.status(404).json({ success: false, message: "No problems found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "No problems found" });
     }
 
     return res.status(200).json({ success: true, data: problems[0] });
   } catch (error) {
     console.error("getRandomProblem error:", error);
-    return res.status(500).json({ success: false, message: "Internal Server Error" });
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal Server Error" });
   }
 };
 
 // ─── GET /problemSet/stats/overview ─────────────────────────────────────────
 export const getProblemStats = async (req, res) => {
   try {
-    const [diffStats, premiumCount, featuredCount, totalCount] = await Promise.all([
-      Problem.aggregate([
-        { $match: { isPublished: true } },
-        { $group: { _id: "$difficulty", count: { $sum: 1 } } },
-      ]),
-      Problem.countDocuments({ isPremium: true,  isPublished: true }),
-      Problem.countDocuments({ isFeatured: true, isPublished: true }),
-      Problem.countDocuments({ isPublished: true }),
-    ]);
+    const [diffStats, premiumCount, featuredCount, totalCount] =
+      await Promise.all([
+        Problem.aggregate([
+          { $match: { isPublished: true } },
+          { $group: { _id: "$difficulty", count: { $sum: 1 } } },
+        ]),
+        Problem.countDocuments({ isPremium: true, isPublished: true }),
+        Problem.countDocuments({ isFeatured: true, isPublished: true }),
+        Problem.countDocuments({ isPublished: true }),
+      ]);
 
     return res.status(200).json({
       success: true,
-      data: { byDifficulty: diffStats, premiumCount, featuredCount, totalCount },
+      data: {
+        byDifficulty: diffStats,
+        premiumCount,
+        featuredCount,
+        totalCount,
+      },
     });
   } catch (error) {
     console.error("getProblemStats error:", error);
-    return res.status(500).json({ success: false, message: "Internal Server Error" });
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal Server Error" });
   }
 };
 
@@ -411,13 +503,17 @@ export const togglePublishProblem = async (req, res) => {
     const slug = req.params.slug?.trim();
 
     if (!slug) {
-      return res.status(400).json({ success: false, message: "Slug is required" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Slug is required" });
     }
 
     const problem = await Problem.findOne({ slug });
 
     if (!problem) {
-      return res.status(404).json({ success: false, message: "Problem not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Problem not found" });
     }
 
     problem.isPublished = !problem.isPublished;
@@ -426,7 +522,9 @@ export const togglePublishProblem = async (req, res) => {
     return res.status(200).json({ success: true, data: problem });
   } catch (error) {
     console.error("togglePublishProblem error:", error);
-    return res.status(500).json({ success: false, message: "Internal Server Error" });
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal Server Error" });
   }
 };
 
@@ -446,7 +544,8 @@ export const getProblemEditorData = async (req, res) => {
       slug,
       isPublished: true,
     })
-      .select(`
+      .select(
+        `
         problemNumber
         title
         slug
@@ -454,7 +553,8 @@ export const getProblemEditorData = async (req, res) => {
         languages
         timeLimit
         memoryLimit
-      `)
+      `,
+      )
       .lean();
 
     if (!problem) {
