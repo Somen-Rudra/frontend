@@ -1,30 +1,22 @@
-import { useState, useEffect } from "react";
+import { useState, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import { API } from "../config/axios";
 import "../styles/ai-page.css";
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
 const LANGUAGE_OPTIONS = ["Python", "JavaScript", "Java", "C++", "C", "Go", "Kotlin", "Swift"];
-
 const LANGUAGE_MAP = {
   Python: "py", JavaScript: "js", Java: "java",
   "C++": "cpp", C: "c", Go: "go", Kotlin: "kotlin", Swift: "swift",
 };
-
+const REVERSE_LANGUAGE_MAP = Object.fromEntries(
+  Object.entries(LANGUAGE_MAP).map(([label, key]) => [key, label])
+);
 const FOLLOWUPS = [
-  { key: "complexity", label: "Explain Complexity",   endpoint: "/ai/complexity"  },
-  { key: "approach",   label: "Approach Explainer",   endpoint: "/ai/approach"    },
-  { key: "bugs",       label: "Bug Finder",            endpoint: "/ai/bug-finder"  },
-  { key: "optimize",   label: "Code Optimization",     endpoint: "/ai/optimize"    },
+  { key: "complexity", label: "Explain Complexity", endpoint: "/ai/complexity"  },
+  { key: "approach",   label: "Approach Explainer", endpoint: "/ai/approach"    },
+  { key: "bugs",       label: "Bug Finder",          endpoint: "/ai/bug-finder"  },
+  { key: "optimize",   label: "Code Optimization",   endpoint: "/ai/optimize"    },
 ];
-
-const MORE_ACTIONS = [
-  { key: "test-cases", label: "Generate Test Cases",        endpoint: "/ai/test-cases"  },
-  { key: "concept",    label: "Explain a Concept",          endpoint: null              }, // opens prompt
-];
-
-// ─── Icons ────────────────────────────────────────────────────────────────────
 
 function CopyIcon() {
   return (
@@ -35,7 +27,14 @@ function CopyIcon() {
     </svg>
   );
 }
-
+function CheckIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
 function SparkleIcon({ size = 40 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
@@ -47,17 +46,6 @@ function SparkleIcon({ size = 40 }) {
   );
 }
 
-function CheckIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="20 6 9 17 4 12" />
-    </svg>
-  );
-}
-
-// ─── Small sub-components ─────────────────────────────────────────────────────
-
 function ComplexityBadge({ label, value }) {
   return (
     <div className="complexity-badge">
@@ -66,47 +54,27 @@ function ComplexityBadge({ label, value }) {
     </div>
   );
 }
-
 function SeverityDot({ severity }) {
   const colors = { high: "var(--hard)", medium: "var(--medium)", low: "var(--easy)" };
-  return (
-    <span className="severity-dot" style={{ background: colors[severity] ?? "var(--text-muted)" }} />
-  );
+  return <span className="severity-dot" style={{ background: colors[severity] ?? "var(--text-muted)" }} />;
 }
-
-// ─── Result renderers ─────────────────────────────────────────────────────────
 
 function ComplexityResult({ data }) {
   return (
     <div className="result-section">
       <div className="complexity-badges-row">
-        <ComplexityBadge label="Time" value={data.timeComplexity} />
+        <ComplexityBadge label="Time"  value={data.timeComplexity}  />
         <ComplexityBadge label="Space" value={data.spaceComplexity} />
       </div>
-      <div className="result-block">
-        <h4>Time Complexity</h4>
-        <p>{data.timeExplanation}</p>
-      </div>
-      <div className="result-block">
-        <h4>Space Complexity</h4>
-        <p>{data.spaceExplanation}</p>
-      </div>
-      {data.bottleneck && (
-        <div className="result-block">
-          <h4>Bottleneck</h4>
-          <p>{data.bottleneck}</p>
-        </div>
-      )}
+      <div className="result-block"><h4>Time Complexity</h4><p>{data.timeExplanation}</p></div>
+      <div className="result-block"><h4>Space Complexity</h4><p>{data.spaceExplanation}</p></div>
+      {data.bottleneck && <div className="result-block"><h4>Bottleneck</h4><p>{data.bottleneck}</p></div>}
       {data.optimizationTip && data.optimizationTip !== "Already optimal" && (
-        <div className="result-tip">
-          <span className="tip-label">💡 Tip</span>
-          {data.optimizationTip}
-        </div>
+        <div className="result-tip"><span className="tip-label">💡 Tip</span>{data.optimizationTip}</div>
       )}
     </div>
   );
 }
-
 function ApproachResult({ data }) {
   return (
     <div className="result-section">
@@ -115,35 +83,22 @@ function ApproachResult({ data }) {
       {data.steps?.length > 0 && (
         <div className="result-block">
           <h4>Steps</h4>
-          <ol className="result-ol">
-            {data.steps.map((s, i) => <li key={i}>{s}</li>)}
-          </ol>
+          <ol className="result-ol">{data.steps.map((s, i) => <li key={i}>{s}</li>)}</ol>
         </div>
       )}
       {data.dataStructuresUsed?.length > 0 && (
         <div className="result-block">
           <h4>Data Structures Used</h4>
-          <div className="tag-row">
-            {data.dataStructuresUsed.map((d, i) => <span key={i} className="tag">{d}</span>)}
-          </div>
+          <div className="tag-row">{data.dataStructuresUsed.map((d, i) => <span key={i} className="tag">{d}</span>)}</div>
         </div>
       )}
-      {data.whyThisWorks && (
-        <div className="result-block">
-          <h4>Why This Works</h4>
-          <p>{data.whyThisWorks}</p>
-        </div>
-      )}
+      {data.whyThisWorks && <div className="result-block"><h4>Why This Works</h4><p>{data.whyThisWorks}</p></div>}
       {data.realLifeAnalogy && (
-        <div className="result-tip">
-          <span className="tip-label">🌍 Analogy</span>
-          {data.realLifeAnalogy}
-        </div>
+        <div className="result-tip"><span className="tip-label">🌍 Analogy</span>{data.realLifeAnalogy}</div>
       )}
     </div>
   );
 }
-
 function BugResult({ data }) {
   return (
     <div className="result-section">
@@ -163,25 +118,20 @@ function BugResult({ data }) {
           </div>
           <p className="bug-card__desc">{issue.description}</p>
           {issue.suggestedFix && (
-            <div className="bug-card__fix">
-              <span className="tip-label">Fix</span> {issue.suggestedFix}
-            </div>
+            <div className="bug-card__fix"><span className="tip-label">Fix</span> {issue.suggestedFix}</div>
           )}
         </div>
       ))}
     </div>
   );
 }
-
 function OptimizeResult({ data }) {
   const [copied, setCopied] = useState(false);
-
   const handleCopy = () => {
     navigator.clipboard?.writeText(data.optimizedCode);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
-
   return (
     <div className="result-section">
       {data.canOptimize ? (
@@ -192,10 +142,7 @@ function OptimizeResult({ data }) {
             <ComplexityBadge label="Before Space" value={data.currentComplexity?.space}   />
             <ComplexityBadge label="After Space"  value={data.optimizedComplexity?.space} />
           </div>
-          <div className="result-block">
-            <h4>What Changed</h4>
-            <p>{data.explanation}</p>
-          </div>
+          <div className="result-block"><h4>What Changed</h4><p>{data.explanation}</p></div>
           <div className="code-result-wrap">
             <div className="code-result-header">
               <span>Optimized Code</span>
@@ -217,7 +164,6 @@ function OptimizeResult({ data }) {
     </div>
   );
 }
-
 function TestCasesResult({ data }) {
   const categoryColor = {
     normal: "var(--info)", edge: "var(--hard)",
@@ -243,64 +189,101 @@ function TestCasesResult({ data }) {
   );
 }
 
-// ─── Main component ───────────────────────────────────────────────────────────
+function PreloadedBanner({ preloaded, onUseThis, onDismiss }) {
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <div className="ai-preloaded-banner">
+      <div className="ai-preloaded-banner__left">
+        <SparkleIcon size={18} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="ai-preloaded-banner__title">
+            Submission preloaded:&nbsp;
+            <strong>{preloaded.problemTitle ?? preloaded.problemSlug}</strong>
+            <span className="sub-lang-badge" style={{ marginLeft: 8 }}>
+              {(REVERSE_LANGUAGE_MAP[preloaded.language] ?? preloaded.language)?.toUpperCase()}
+            </span>
+          </div>
+          <div className="ai-preloaded-banner__actions">
+            <button className="btn btn-primary" style={{ padding: "4px 14px", fontSize: 12 }} onClick={onUseThis}>
+              Load into editor
+            </button>
+            <button className="followup-btn" onClick={() => setExpanded(e => !e)}>
+              {expanded ? "Hide preview" : "Preview code"}
+            </button>
+            <button className="followup-btn" onClick={onDismiss}>
+              Dismiss
+            </button>
+          </div>
+          {expanded && (
+            <pre className="ai-context-banner__code" style={{ marginTop: 8, maxHeight: 200, overflow: "auto" }}>
+              <code>{preloaded.code}</code>
+            </pre>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function AICodeExplanation() {
-  const location = useLocation();
-  const preloaded = location.state?.preloaded ?? null;
+  const location  = useLocation();
 
-  // Map preloaded language key (cpp/py/js) → display label
-  const preloadedLangLabel = preloaded?.language
-    ? Object.entries(LANGUAGE_MAP).find(([, v]) => v === preloaded.language)?.[0] ?? "C++"
-    : "Python";
+  // Preloaded from submissions — stored separately, never auto-injected into textarea
+  const [preloaded, setPreloaded] = useState(location.state?.preloaded ?? null);
 
-  const [code,     setCode]     = useState(preloaded?.code     ?? "");
-  const [language, setLanguage] = useState(preloadedLangLabel);
+  // Textarea is always free — user controls it
+  const [code,     setCode]     = useState("");
+  const [language, setLanguage] = useState("Python");
 
-  // overview result from /ai/approach (used as the main "Explain" action)
   const [overview,        setOverview]        = useState(null);
   const [overviewLoading, setOverviewLoading] = useState(false);
   const [overviewError,   setOverviewError]   = useState(null);
 
-  // followup results keyed by followup key
-  const [followupResults,  setFollowupResults]  = useState({});
-  const [followupLoading,  setFollowupLoading]  = useState(null); // which key is loading
-  const [followupError,    setFollowupError]    = useState(null);
-  const [activeFollowup,   setActiveFollowup]   = useState(null);
+  const [followupResults, setFollowupResults] = useState({});
+  const [followupLoading, setFollowupLoading] = useState(null);
+  const [followupError,   setFollowupError]   = useState(null);
+  const [activeFollowup,  setActiveFollowup]  = useState(null);
 
-  // more actions
   const [testCases,        setTestCases]        = useState(null);
   const [testCasesLoading, setTestCasesLoading] = useState(false);
   const [showTestCases,    setShowTestCases]    = useState(false);
 
   const [copied, setCopied] = useState(false);
 
-  // Auto-explain if arriving with preloaded code
-  useEffect(() => {
-    if (preloaded?.code) {
-      handleExplain(preloaded.code, preloadedLangLabel);
-    }
-  }, []); // eslint-disable-line
+  // Snapshot of code+lang AT explain time — followups always use this
+  const explainedCodeRef = useRef("");
+  const explainedLangRef = useRef("Python");
 
-  // ── Actions ───────────────────────────────────────────────────────────────
+  const handleUsePreloaded = () => {
+    const langLabel = REVERSE_LANGUAGE_MAP[preloaded.language] ?? "C++";
+    setCode(preloaded.code ?? "");
+    setLanguage(langLabel);
+    setPreloaded(null);
+  };
 
-  const handleExplain = async (codeOverride, langOverride) => {
-    const finalCode = codeOverride ?? code;
-    const finalLang = langOverride ?? language;
-    if (!finalCode.trim()) return;
-
-    setOverviewLoading(true);
-    setOverviewError(null);
+  const resetResults = () => {
     setOverview(null);
+    setOverviewError(null);
     setFollowupResults({});
     setActiveFollowup(null);
     setShowTestCases(false);
+    setTestCases(null);
+  };
+
+  const handleExplain = async () => {
+    if (!code.trim()) return;
+
+    // Snapshot exactly what is in the textarea right now
+    explainedCodeRef.current = code;
+    explainedLangRef.current = language;
+
+    setOverviewLoading(true);
+    resetResults();
 
     try {
       const res = await API.post("/ai/approach", {
-        code: finalCode,
-        language: LANGUAGE_MAP[finalLang] ?? finalLang.toLowerCase(),
-        problemDescription: preloaded?.problemTitle ?? "",
+        code,
+        language: LANGUAGE_MAP[language] ?? language.toLowerCase(),
       });
       setOverview(res.data.data);
     } catch {
@@ -311,15 +294,11 @@ export default function AICodeExplanation() {
   };
 
   const handleFollowup = async (followup) => {
-    // Toggle off if already active
     if (activeFollowup === followup.key && followupResults[followup.key]) {
       setActiveFollowup(null);
       return;
     }
-
     setActiveFollowup(followup.key);
-
-    // Use cached result if available
     if (followupResults[followup.key]) return;
 
     setFollowupLoading(followup.key);
@@ -327,9 +306,8 @@ export default function AICodeExplanation() {
 
     try {
       const res = await API.post(followup.endpoint, {
-        code,
-        language: LANGUAGE_MAP[language] ?? language.toLowerCase(),
-        problemDescription: preloaded?.problemTitle ?? "",
+        code:     explainedCodeRef.current,   // always the snapshotted version
+        language: LANGUAGE_MAP[explainedLangRef.current] ?? explainedLangRef.current.toLowerCase(),
       });
       setFollowupResults(prev => ({ ...prev, [followup.key]: res.data.data }));
     } catch {
@@ -342,12 +320,11 @@ export default function AICodeExplanation() {
 
   const handleGenerateTestCases = async () => {
     setShowTestCases(true);
-    if (testCases) return; // cached
-
+    if (testCases) return;
     setTestCasesLoading(true);
     try {
       const res = await API.post("/ai/test-cases", {
-        problemDescription: preloaded?.problemTitle ?? "Analyze the code and generate test cases",
+        problemDescription: `Generate test cases for this ${explainedLangRef.current} code:\n\n${explainedCodeRef.current}`,
         constraints: "",
       });
       setTestCases(res.data.data);
@@ -360,12 +337,8 @@ export default function AICodeExplanation() {
 
   const handleClear = () => {
     setCode("");
-    setOverview(null);
-    setOverviewError(null);
-    setFollowupResults({});
-    setActiveFollowup(null);
-    setShowTestCases(false);
-    setTestCases(null);
+    resetResults();
+    explainedCodeRef.current = "";
   };
 
   const handleCopyCode = () => {
@@ -376,69 +349,62 @@ export default function AICodeExplanation() {
 
   const activeFollowupMeta = FOLLOWUPS.find(f => f.key === activeFollowup);
 
-  // ── Render ───────────────────────────────────────────────────────────────
-
   return (
     <div className="ai-explain-page">
       <div className="ai-explain-breadcrumb">
         AI Features <span className="crumb-active">/ AI Code Explanation</span>
       </div>
-
       <div className="ai-explain-header">
         <h1>AI Code Explanation</h1>
         <p>Get detailed explanations of any code snippet</p>
       </div>
 
+      {preloaded && (
+        <PreloadedBanner
+          preloaded={preloaded}
+          onUseThis={handleUsePreloaded}
+          onDismiss={() => setPreloaded(null)}
+        />
+      )}
+
       <div className="ai-explain-grid">
 
-        {/* ── Left: Code input ────────────────────────────────────────────── */}
+        {/* Left: Code input */}
         <div className="panel code-panel">
           <div className="panel-title">Your Code</div>
-
           <div className="panel-toolbar">
-            <select
-              className="language-select"
-              value={language}
-              onChange={e => setLanguage(e.target.value)}
-            >
+            <select className="language-select" value={language} onChange={e => setLanguage(e.target.value)}>
               {LANGUAGE_OPTIONS.map(l => <option key={l}>{l}</option>)}
             </select>
             <button className="copy-icon-btn" onClick={handleCopyCode} title="Copy code">
               {copied ? <CheckIcon /> : <CopyIcon />}
             </button>
           </div>
-
           <textarea
             className="code-textarea"
             value={code}
             onChange={e => setCode(e.target.value)}
-            placeholder="Paste your code here..."
+            placeholder="Paste your code here…"
             spellCheck="false"
           />
-
           <div className="code-panel-actions">
-            <button className="btn btn-secondary" onClick={handleClear}>
-              Clear
-            </button>
+            <button className="btn btn-secondary" onClick={handleClear}>Clear</button>
             <button
               className="btn btn-primary"
-              onClick={() => handleExplain()}
+              onClick={handleExplain}
               disabled={!code.trim() || overviewLoading}
             >
-              {overviewLoading ? (
-                <><span className="btn-spinner" /> Explaining…</>
-              ) : "Explain Code"}
+              {overviewLoading ? <><span className="btn-spinner" /> Explaining…</> : "Explain Code"}
             </button>
           </div>
         </div>
 
-        {/* ── Middle: Explanation panel ────────────────────────────────────── */}
+        {/* Middle: Results */}
         <div className="panel explanation-panel">
           <div className="panel-title">
             {activeFollowupMeta ? activeFollowupMeta.label : "AI Explanation"}
           </div>
 
-          {/* Loading states */}
           {(overviewLoading || followupLoading) && (
             <div className="loading-row">
               <div className="spinner" />
@@ -448,7 +414,6 @@ export default function AICodeExplanation() {
             </div>
           )}
 
-          {/* Empty state */}
           {!overviewLoading && !followupLoading && !overview && !overviewError && (
             <div className="explanation-empty">
               <SparkleIcon />
@@ -456,20 +421,17 @@ export default function AICodeExplanation() {
             </div>
           )}
 
-          {/* Overview error */}
           {overviewError && !overviewLoading && (
             <div className="result-error">
               {overviewError}
-              <button className="subs-retry-btn" onClick={() => handleExplain()}>Retry</button>
+              <button className="subs-retry-btn" onClick={handleExplain}>Retry</button>
             </div>
           )}
 
-          {/* Followup error */}
           {followupError && !followupLoading && (
             <div className="result-error">{followupError}</div>
           )}
 
-          {/* Overview / approach result */}
           {!overviewLoading && overview && !activeFollowup && (
             <>
               <div className="result-section">
@@ -478,26 +440,19 @@ export default function AICodeExplanation() {
               </div>
               <div className="result-block">
                 <h4>Step-by-step</h4>
-                <ol className="result-ol">
-                  {overview.steps?.map((s, i) => <li key={i}>{s}</li>)}
-                </ol>
+                <ol className="result-ol">{overview.steps?.map((s, i) => <li key={i}>{s}</li>)}</ol>
               </div>
               {overview.whyThisWorks && (
-                <div className="result-block">
-                  <h4>Why This Works</h4>
-                  <p>{overview.whyThisWorks}</p>
-                </div>
+                <div className="result-block"><h4>Why This Works</h4><p>{overview.whyThisWorks}</p></div>
               )}
               {overview.realLifeAnalogy && (
                 <div className="result-tip">
-                  <span className="tip-label">🌍 Analogy</span>
-                  {overview.realLifeAnalogy}
+                  <span className="tip-label">🌍 Analogy</span>{overview.realLifeAnalogy}
                 </div>
               )}
             </>
           )}
 
-          {/* Followup result */}
           {!followupLoading && activeFollowup && followupResults[activeFollowup] && (
             <>
               {activeFollowup === "complexity" && <ComplexityResult data={followupResults.complexity} />}
@@ -507,7 +462,6 @@ export default function AICodeExplanation() {
             </>
           )}
 
-          {/* Test cases inline */}
           {showTestCases && !activeFollowup && (
             <div className="result-block" style={{ marginTop: "var(--space-4)" }}>
               <h4>Generated Test Cases</h4>
@@ -515,12 +469,10 @@ export default function AICodeExplanation() {
                 ? <div className="loading-row"><div className="spinner" /> Generating…</div>
                 : testCases
                   ? <TestCasesResult data={testCases} />
-                  : <p className="result-error">Failed to generate test cases.</p>
-              }
+                  : <p className="result-error">Failed to generate test cases.</p>}
             </div>
           )}
 
-          {/* Followup buttons — show only when overview is ready */}
           {overview && !overviewLoading && (
             <div className="explanation-section" style={{ marginTop: "auto", paddingTop: "var(--space-5)" }}>
               <div className="followup-title">Dig deeper</div>
@@ -547,10 +499,8 @@ export default function AICodeExplanation() {
           )}
         </div>
 
-        {/* ── Right column ─────────────────────────────────────────────────── */}
+        {/* Right column */}
         <div className="right-column">
-
-          {/* More actions */}
           <div className="panel more-actions-panel">
             <div className="panel-title">More Actions</div>
             <div className="more-actions-list">
@@ -569,7 +519,6 @@ export default function AICodeExplanation() {
             </div>
           </div>
 
-          {/* Quick stats — show once overview is ready */}
           {overview && (
             <div className="panel related-panel">
               <div className="panel-title">Code Summary</div>

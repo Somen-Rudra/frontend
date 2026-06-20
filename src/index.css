@@ -84,6 +84,12 @@
   --tab-inactive-hover-bg: rgba(220, 20, 60, 0.12);
   --tab-inactive-hover-text: #ffffff;
   --tab-content-bg: #061210;
+
+  /* ===== HEATMAP ===== */
+  --hm-cell-size : 13px;
+  --hm-gap       : 3px;
+  --hm-radius    : 3px;
+
 }
 
 [data-theme="dark"] {

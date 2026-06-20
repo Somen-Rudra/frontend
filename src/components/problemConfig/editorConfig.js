@@ -39,13 +39,13 @@ export const LANGUAGES = {
     name: "JavaScript",
     monacoLang: "javascript",
     dbKey: "js",
-    judgeKey: "javascript", // judge uses "javascript", DB stores "js"
+    judgeKey: "js", // judge uses "javascript", DB stores "js"
   },
   py: {
     name: "Python",
     monacoLang: "python",
     dbKey: "py",
-    judgeKey: "python", // judge uses "python", DB stores "py"
+    judgeKey: "py", // judge uses "python", DB stores "py"
   },
   java: {
     name: "Java",
@@ -57,7 +57,7 @@ export const LANGUAGES = {
     name: "Kotlin",
     monacoLang: "kotlin",
     dbKey: "kotlin",
-    judgeKey: "kotlin",
+    judgeKey: "kt",
   },
   swift: {
     name: "Swift",

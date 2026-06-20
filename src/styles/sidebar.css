@@ -21,8 +21,8 @@
 }
 
 .sidebar--collapsed {
-  width: 56px;
-  min-width: 56px;
+  width: 56px !important;
+  min-width: 56px !important;
 }
 
 /* ── Header ── */

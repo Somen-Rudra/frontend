@@ -2,17 +2,13 @@ import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { API } from "../config/axios";
+import DifficultyRings from "./DifficultyRings";
 import "../styles/profile.css";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getInitials(name = "") {
-  return name
-    .split(" ")
-    .map((w) => w[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
+  return name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
 }
 
 function fmtDate(iso) {
@@ -31,9 +27,9 @@ function fmtRelative(iso) {
 }
 
 const VERDICT_MAP = {
-  accepted:            { label: "Accepted",  pass: true  },
-  wrong_answer:        { label: "Wrong Answer", pass: false },
-  time_limit_exceeded: { label: "TLE",       pass: false },
+  accepted:            { label: "Accepted",      pass: true  },
+  wrong_answer:        { label: "Wrong Answer",  pass: false },
+  time_limit_exceeded: { label: "TLE",           pass: false },
   runtime_error:       { label: "Runtime Error", pass: false },
   compile_error:       { label: "Compile Error", pass: false },
 };
@@ -45,14 +41,14 @@ const LANGUAGE_LABELS = {
 
 const BADGE_ICONS = ["🏆", "⭐", "🎯", "⚡", "🔥", "💎", "🚀", "🎖️"];
 
+// Totals — replace with API data if you have a totals endpoint
 const TOTAL_PROBLEMS = { easy: 800, medium: 1600, hard: 600 };
 
-// ─── Build heatmap from activityMap { "YYYY-MM-DD": count } ──────────────────
+// ─── Heatmap builder ──────────────────────────────────────────────────────────
 
 function buildHeatmap(activityMap = {}, weeks = 52) {
   const result = [];
   const today = new Date();
-
   for (let w = weeks - 1; w >= 0; w--) {
     const week = [];
     for (let d = 6; d >= 0; d--) {
@@ -78,45 +74,37 @@ const StatCard = ({ label, value, sub }) => (
   </div>
 );
 
-const DiffRing = ({ solved, total, color, label }) => {
-  const pct = total > 0 ? Math.round((solved / total) * 100) : 0;
-  return (
-    <div className="pf__diff-item">
-      <div className="pf__diff-ring" style={{ "--pct": pct, "--clr": color }}>
-        <div className="pf__diff-ring-inner">
-          <span className="pf__diff-count">{solved}</span>
-        </div>
-      </div>
-      <div className="pf__diff-label" style={{ color }}>{label}</div>
-      <div className="pf__diff-total">/{total}</div>
-    </div>
-  );
-};
-
 const TABS = ["Overview", "Submissions", "Badges"];
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function Profile() {
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  const [tab, setTab] = useState("Overview");
+  const { user }   = useAuth();
+  const navigate   = useNavigate();
+  const [tab, setTab]               = useState("Overview");
   const [submissions, setSubmissions] = useState(null);
   const [subsLoading, setSubsLoading] = useState(false);
 
-  const solved    = user?.solvedCount   ?? { easy: 0, medium: 0, hard: 0 };
-  const streak    = user?.streak        ?? { current: 0, best: 0 };
-  const badges    = user?.badges        ?? [];
+  const solved      = user?.solvedCount ?? { easy: 0, medium: 0, hard: 0 };
+  const streak      = user?.streak      ?? { current: 0, best: 0 };
+  const badges      = user?.badges      ?? [];
   const activityMap = useMemo(
     () => Object.fromEntries(Object.entries(user?.activityMap ?? {})),
-    [user?.activityMap]
+    [user?.activityMap],
   );
 
   const totalSolved   = solved.easy + solved.medium + solved.hard;
   const totalProblems = TOTAL_PROBLEMS.easy + TOTAL_PROBLEMS.medium + TOTAL_PROBLEMS.hard;
   const heatmap       = useMemo(() => buildHeatmap(activityMap), [activityMap]);
 
-  // Lazy-load submissions when Submissions tab is opened
+  // Build the data array DifficultyRings expects
+  const difficultyData = useMemo(() => [
+    { name: "Easy",   solved: solved.easy,   total: TOTAL_PROBLEMS.easy   },
+    { name: "Medium", solved: solved.medium,  total: TOTAL_PROBLEMS.medium },
+    { name: "Hard",   solved: solved.hard,    total: TOTAL_PROBLEMS.hard   },
+  ], [solved]);
+
+  // Lazy-load submissions when tab is opened
   const handleTabChange = async (t) => {
     setTab(t);
     if (t === "Submissions" && submissions === null && !subsLoading) {
@@ -143,7 +131,7 @@ export default function Profile() {
   return (
     <div className="pf__root">
 
-      {/* ── Left aside ─────────────────────────────────────────────────── */}
+      {/* ── Left aside ──────────────────────────────────────────────────── */}
       <aside className="pf__aside">
 
         {/* Identity */}
@@ -179,33 +167,22 @@ export default function Profile() {
             label="Global Rank"
             value={user.globalRank ? `#${user.globalRank.toLocaleString()}` : "—"}
           />
-          <StatCard
-            label="Day Streak"
-            value={`${streak.current}🔥`}
-          />
-          <StatCard
-            label="Problems"
-            value={totalSolved}
-            sub={`/ ${totalProblems}`}
-          />
-          <StatCard
-            label="Rating"
-            value={user.contestRating ?? "—"}
-          />
+          <StatCard label="Day Streak" value={`${streak.current}🔥`} />
+          <StatCard label="Problems"   value={totalSolved} sub={`/ ${totalProblems}`} />
+          <StatCard label="Rating"     value={user.contestRating ?? "—"} />
         </div>
 
-        {/* Difficulty breakdown */}
+        {/* Difficulty rings — reusing shared component */}
         <div className="pf__card">
-          <div className="pf__section-title">Solved by Difficulty</div>
-          <div className="pf__diff-row">
-            <DiffRing solved={solved.easy}   total={TOTAL_PROBLEMS.easy}   color="var(--easy)"   label="Easy"   />
-            <DiffRing solved={solved.medium} total={TOTAL_PROBLEMS.medium} color="var(--medium)" label="Medium" />
-            <DiffRing solved={solved.hard}   total={TOTAL_PROBLEMS.hard}   color="var(--hard)"   label="Hard"   />
+          <div className="pf__section-title" style={{ marginBottom: "var(--space-4)" }}>
+            Solved by Difficulty
           </div>
+          <DifficultyRings data={difficultyData} size={72} />
         </div>
+
       </aside>
 
-      {/* ── Right main ─────────────────────────────────────────────────── */}
+      {/* ── Right main ──────────────────────────────────────────────────── */}
       <main className="pf__main">
 
         <div className="pf__tabs">
@@ -353,6 +330,7 @@ export default function Profile() {
             )}
           </div>
         )}
+
       </main>
     </div>
   );

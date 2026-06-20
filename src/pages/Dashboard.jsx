@@ -7,12 +7,12 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  RadialBarChart,
-  RadialBar,
 } from "recharts";
 import "../styles/dashboard.css";
 import { useDashboard } from "../hooks/useDashboard";
 import { useAuth } from "../context/AuthContext";
+import Heatmap from "../components/Heatmap";
+import DifficultyRings from "../components/DifficultyRings";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -49,52 +49,54 @@ const UPCOMING_CONTESTS = [
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function fmtTime(totalSeconds) {
-  const h = Math.floor(totalSeconds / 3600).toString().padStart(2, "0");
-  const m = Math.floor((totalSeconds % 3600) / 60).toString().padStart(2, "0");
+  const h = Math.floor(totalSeconds / 3600)
+    .toString()
+    .padStart(2, "0");
+  const m = Math.floor((totalSeconds % 3600) / 60)
+    .toString()
+    .padStart(2, "0");
   const s = (totalSeconds % 60).toString().padStart(2, "0");
   return `${h} : ${m} : ${s}`;
 }
 
 function cap(str) {
+  if (!str) return "";
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
 /**
- * Converts the heatmap object { "YYYY-MM-DD": count } into a flat array of
- * intensity levels (0–4) ordered by date, covering the last `weeks` weeks.
- */
-function buildHeatmapCells(heatmap = {}, weeks = 28) {
-  const cells = [];
-  const today = new Date();
-
-  for (let i = weeks * 7 - 1; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(today.getDate() - i);
-    const key = d.toISOString().slice(0, 10); // "YYYY-MM-DD"
-    const count = heatmap[key] ?? 0;
-    // Map submission count to intensity 0–4
-    const level = count === 0 ? 0 : count <= 2 ? 1 : count <= 4 ? 2 : count <= 7 ? 3 : 4;
-    cells.push(level);
-  }
-
-  return cells;
-}
-
-/**
- * Derives monthly solved data from the heatmap for the area chart.
- * Groups daily counts by month label.
+ * Builds 12-month chart data.
  */
 function buildMonthlyData(heatmap = {}) {
+  const labels = [
+    "Jan","Feb","Mar","Apr","May","Jun",
+    "Jul","Aug","Sep","Oct","Nov","Dec",
+  ];
   const monthTotals = {};
-  const labels = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-
   Object.entries(heatmap).forEach(([date, count]) => {
     const month = labels[new Date(date).getMonth()];
     monthTotals[month] = (monthTotals[month] ?? 0) + count;
   });
-
   return labels.map((month) => ({ month, solved: monthTotals[month] ?? 0 }));
 }
+
+// ─── Mini heatmap cells for the streak card ───────────────────────────────────
+
+function buildMiniCells(heatmap = {}, count = 42) {
+  const cells = [];
+  const today = new Date();
+  for (let i = count - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    const n = heatmap[key] ?? 0;
+    const level = n === 0 ? 0 : n <= 2 ? 1 : n <= 4 ? 2 : n <= 7 ? 3 : 4;
+    cells.push({ key, level });
+  }
+  return cells;
+}
+
+// ─── Chart tooltip ────────────────────────────────────────────────────────────
 
 function ChartTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null;
@@ -111,20 +113,19 @@ function ChartTooltip({ active, payload, label }) {
 export default function Dashboard() {
   const [chartPeriod, setChartPeriod] = useState("This Year");
   const { user } = useAuth();
-  const { stats, recentSubs, recommended, loading } = useDashboard();
+  const { stats, overview, recentSubs, recommended, loading } = useDashboard();
 
-  // ── Derived data from real API ──────────────────────────────────────────────
+  // ── Derived data ────────────────────────────────────────────────────────────
 
-  const heatmapCells = useMemo(
-    () => buildHeatmapCells(stats?.heatmap, 28),
-    [stats?.heatmap]
+  // Mini cells for streak card only (42 days = 6 weeks × 7)
+  const miniCells = useMemo(
+    () => buildMiniCells(stats?.heatmap ?? {}, 42),
+    [stats?.heatmap],
   );
 
-  const miniCells = heatmapCells.slice(-42);
-
   const allMonthlyData = useMemo(
-    () => buildMonthlyData(stats?.heatmap),
-    [stats?.heatmap]
+    () => buildMonthlyData(stats?.heatmap ?? {}),
+    [stats?.heatmap],
   );
 
   const chartData = useMemo(() => {
@@ -132,6 +133,11 @@ export default function Dashboard() {
     if (chartPeriod === "Last 3 Months") return allMonthlyData.slice(-3);
     return allMonthlyData;
   }, [chartPeriod, allMonthlyData]);
+
+  const yMax = useMemo(() => {
+    const max = Math.max(...chartData.map((d) => d.solved), 0);
+    return max < 5 ? 5 : Math.ceil(max * 1.2);
+  }, [chartData]);
 
   const statCards = useMemo(() => {
     if (!stats) return [];
@@ -164,17 +170,32 @@ export default function Dashboard() {
   }, [stats]);
 
   const difficultyData = useMemo(() => {
-    if (!stats?.solvedCount) return [];
+    const solved = stats?.solvedCount ?? {};
+    // overview.byDifficulty is [{ _id: "easy", count: 4 }, ...]
+    const totals = {};
+    (overview?.byDifficulty ?? []).forEach(({ _id, count }) => {
+      totals[_id] = count;
+    });
     return [
-      { name: "Easy",   solved: stats.solvedCount.easy,   fill: "var(--easy)" },
-      { name: "Medium", solved: stats.solvedCount.medium, fill: "var(--medium)" },
-      { name: "Hard",   solved: stats.solvedCount.hard,   fill: "var(--hard)" },
+      { name: "Easy",   solved: solved.easy   ?? 0, total: totals.easy   ?? 0 },
+      { name: "Medium", solved: solved.medium  ?? 0, total: totals.medium ?? 0 },
+      { name: "Hard",   solved: solved.hard    ?? 0, total: totals.hard   ?? 0 },
     ];
-  }, [stats?.solvedCount]);
+  }, [stats?.solvedCount, overview]);
 
-  // ── Loading state ───────────────────────────────────────────────────────────
+  // ── Loading ─────────────────────────────────────────────────────────────────
 
-  if (loading) return <div>Loading...</div>;
+  if (loading)
+    return (
+      <div className="db-layout">
+        <main
+          className="db-scroll"
+          style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
+        >
+          <p style={{ color: "var(--text-muted)" }}>Loading dashboard…</p>
+        </main>
+      </div>
+    );
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
@@ -190,7 +211,8 @@ export default function Dashboard() {
             <div className="db-welcome">
               <div className="db-greeting">
                 <h1>
-                  Good morning, {user?.name?.split(" ")[0].toUpperCase() ?? "there"}!{" "}
+                  Good morning,{" "}
+                  {user?.name?.split(" ")[0].toUpperCase() ?? "there"}!{" "}
                   <span aria-label="wave">👋</span>
                 </h1>
                 <p>Let's solve some problems today and keep that streak alive.</p>
@@ -209,9 +231,10 @@ export default function Dashboard() {
                     <div className="db-streak-best">Best: {stats?.streak?.best ?? 0} days</div>
                   </div>
                 </div>
+                {/* Mini heatmap — compact 6-week strip in the streak card */}
                 <div className="db-mini-heatmap">
-                  {miniCells.map((lvl, i) => (
-                    <div key={i} className={`db-hcell db-hcell--${lvl}`} />
+                  {miniCells.map((cell, i) => (
+                    <div key={i} className={`db-hcell db-hcell--${cell.level}`} />
                   ))}
                 </div>
               </div>
@@ -238,30 +261,16 @@ export default function Dashboard() {
               ))}
             </div>
 
-            {/* Charts row */}
-            <div className="db-charts-grid">
+            {/* ── Activity Heatmap — full-width GitHub-style ── */}
+            <div className="db-heatmap-section">
+              <Heatmap
+                heatmap={stats?.heatmap ?? {}}
+                title="Activity Heatmap"
+              />
+            </div>
 
-              {/* Activity heatmap */}
-              <div className="db-card">
-                <div className="db-card-header">
-                  <h3 className="db-card-title">Activity Heatmap</h3>
-                  <span className="db-card-hint">28 weeks</span>
-                </div>
-                <div className="db-heatmap-wrap">
-                  <div className="db-heatmap">
-                    {heatmapCells.map((lvl, i) => (
-                      <div key={i} className={`db-hcell db-hcell--${lvl}`} />
-                    ))}
-                  </div>
-                  <div className="db-heatmap-legend">
-                    <span>Less</span>
-                    {[0, 1, 2, 3, 4].map((l) => (
-                      <div key={l} className={`db-hcell db-hcell--${l}`} />
-                    ))}
-                    <span>More</span>
-                  </div>
-                </div>
-              </div>
+            {/* ── Charts row (area + radial) ── */}
+            <div className="db-charts-grid">
 
               {/* Area chart */}
               <div className="db-card">
@@ -279,18 +288,44 @@ export default function Dashboard() {
                 </div>
                 <div className="db-chart-area">
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={chartData} margin={{ top: 8, right: 4, left: -24, bottom: 0 }}>
+                    <AreaChart
+                      data={chartData}
+                      margin={{ top: 8, right: 4, left: -24, bottom: 0 }}
+                    >
                       <defs>
                         <linearGradient id="solvedGrad" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#dc143c" stopOpacity={0.25} />
-                          <stop offset="100%" stopColor="#dc143c" stopOpacity={0} />
+                          <stop offset="0%"   stopColor="#dc143c" stopOpacity={0.25} />
+                          <stop offset="100%" stopColor="#dc143c" stopOpacity={0}    />
                         </linearGradient>
                       </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border-primary)" vertical={false} />
-                      <XAxis dataKey="month" tick={{ fontSize: 11, fill: "var(--text-muted)" }} axisLine={false} tickLine={false} />
-                      <YAxis tick={{ fontSize: 11, fill: "var(--text-muted)" }} axisLine={false} tickLine={false} />
-                      <Tooltip content={<ChartTooltip />} cursor={{ stroke: "var(--color-primary)", strokeWidth: 1, strokeDasharray: "4 2" }} />
-                      <Area type="monotone" dataKey="solved" stroke="#dc143c" strokeWidth={2.5} fill="url(#solvedGrad)"
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke="var(--border-primary)"
+                        vertical={false}
+                      />
+                      <XAxis
+                        dataKey="month"
+                        tick={{ fontSize: 11, fill: "var(--text-muted)" }}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <YAxis
+                        tick={{ fontSize: 11, fill: "var(--text-muted)" }}
+                        axisLine={false}
+                        tickLine={false}
+                        domain={[0, yMax]}
+                        allowDecimals={false}
+                      />
+                      <Tooltip
+                        content={<ChartTooltip />}
+                        cursor={{ stroke: "var(--color-primary)", strokeWidth: 1, strokeDasharray: "4 2" }}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="solved"
+                        stroke="#dc143c"
+                        strokeWidth={2.5}
+                        fill="url(#solvedGrad)"
                         dot={{ r: 3, fill: "#dc143c", strokeWidth: 0 }}
                         activeDot={{ r: 5, fill: "#dc143c", stroke: "var(--bg-card)", strokeWidth: 2 }}
                       />
@@ -299,48 +334,43 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              {/* Radial chart */}
+              {/* Difficulty rings */}
               <div className="db-card db-card--radial">
                 <div className="db-card-header">
                   <h3 className="db-card-title">Difficulty Breakdown</h3>
                 </div>
-                <div className="db-radial-wrap">
-                  <ResponsiveContainer width="100%" height={180}>
-                    <RadialBarChart cx="50%" cy="50%" innerRadius="30%" outerRadius="90%" barSize={14}
-                      data={difficultyData} startAngle={90} endAngle={-270}
-                    >
-                      <RadialBar dataKey="solved" cornerRadius={6} background={{ fill: "var(--bg-tertiary)" }} />
-                    </RadialBarChart>
-                  </ResponsiveContainer>
-                  <div className="db-radial-legend">
-                    {difficultyData.map((d) => (
-                      <div key={d.name} className="db-radial-item">
-                        <span className="db-radial-dot" style={{ background: d.fill }} />
-                        <span className="db-radial-name">{d.name}</span>
-                        <span className="db-radial-count">{d.solved}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                <DifficultyRings data={difficultyData} size={80} />
               </div>
+
             </div>
 
-            {/* Recommended for You — from API */}
+            {/* Recommended */}
             <div className="db-section">
               <div className="db-section-header">
                 <div>
                   <h3 className="db-card-title">Recommended for You</h3>
                   <p className="db-section-sub">Based on your recent activity</p>
                 </div>
-                <a href="#" className="db-link">View all</a>
+                <a href="/problemSet" className="db-link">View all</a>
               </div>
               <div className="db-rec-grid">
+                {recommended.length === 0 && (
+                  <p style={{ color: "var(--text-muted)", fontSize: 13 }}>
+                    No recommendations yet.
+                  </p>
+                )}
                 {recommended.map((r) => (
-                  <div key={r._id} className="db-rec-card">
+                  <a
+                    key={r._id}
+                    className="db-rec-card"
+                    href={`/problemSet/${r.slug}`}
+                    style={{ textDecoration: "none" }}
+                  >
                     <div className="db-rec-top">
                       <div className="db-icon-box">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
-                          stroke={`var(--${r.difficulty})`} strokeWidth="2"
+                        <svg
+                          width="15" height="15" viewBox="0 0 24 24"
+                          fill="none" stroke={`var(--${r.difficulty})`} strokeWidth="2"
                         >
                           <rect x="3" y="3" width="18" height="18" rx="2" />
                           <line x1="9" y1="3" x2="9" y2="21" />
@@ -360,16 +390,17 @@ export default function Dashboard() {
                         {r.acceptancePercentage != null ? `${r.acceptancePercentage}%` : "—"}
                       </span>
                     </div>
-                  </div>
+                  </a>
                 ))}
               </div>
             </div>
+
           </div>
 
           {/* ── RIGHT COLUMN ─────────────────────────────────── */}
           <div className="db-right">
 
-            {/* Upcoming Contests — still static until you have a contests API */}
+            {/* Upcoming Contests */}
             <div className="db-card db-card--right">
               <div className="db-card-header">
                 <h3 className="db-card-title">Upcoming Contests</h3>
@@ -379,7 +410,10 @@ export default function Dashboard() {
                 {UPCOMING_CONTESTS.map((c) => (
                   <div key={c.id} className="db-list-item">
                     <div className="db-list-left">
-                      <div className="db-org-badge" style={{ background: c.color + "22", color: c.color }}>
+                      <div
+                        className="db-org-badge"
+                        style={{ background: c.color + "22", color: c.color }}
+                      >
                         {c.org.charAt(0)}
                       </div>
                       <div>
@@ -396,11 +430,11 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Continue Solving — from recent submissions */}
+            {/* Continue Solving */}
             <div className="db-card db-card--right">
               <div className="db-card-header">
                 <h3 className="db-card-title">Continue Solving</h3>
-                <a href="#" className="db-link">View all</a>
+                <a href="/submissions" className="db-link">View all</a>
               </div>
               <div className="db-list">
                 {recentSubs.length === 0 && (
@@ -412,8 +446,9 @@ export default function Dashboard() {
                   <div key={sub._id} className="db-list-item">
                     <div className="db-list-left">
                       <div className="db-icon-box">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
-                          stroke={`var(--${sub.problem?.difficulty})`} strokeWidth="2"
+                        <svg
+                          width="15" height="15" viewBox="0 0 24 24"
+                          fill="none" stroke={`var(--${sub.problem?.difficulty})`} strokeWidth="2"
                         >
                           <polygon points="12 2 2 7 12 12 22 7 12 2" />
                           <polyline points="2 17 12 22 22 17" />
@@ -423,7 +458,10 @@ export default function Dashboard() {
                       <div>
                         <div className="db-list-title">
                           {sub.problem?.title}
-                          <span className={`db-badge db-badge--${sub.problem?.difficulty}`} style={{ marginLeft: 7 }}>
+                          <span
+                            className={`db-badge db-badge--${sub.problem?.difficulty}`}
+                            style={{ marginLeft: 7 }}
+                          >
                             {cap(sub.problem?.difficulty ?? "")}
                           </span>
                         </div>
@@ -432,7 +470,7 @@ export default function Dashboard() {
                         </div>
                       </div>
                     </div>
-                    <a href={`/problems/${sub.problem?.slug}`} className="db-btn-outline">
+                    <a href={`/problemSet/${sub.problem?.slug}`} className="db-btn-outline">
                       Continue
                     </a>
                   </div>
@@ -440,24 +478,20 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Recent Achievements — from badges */}
+            {/* Recent Achievements */}
             <div className="db-card db-card--right">
               <div className="db-card-header">
                 <h3 className="db-card-title">Recent Achievements</h3>
                 <a href="#" className="db-link">View all</a>
               </div>
               <div className="db-list">
-                {(!stats?.badgeCount || stats.badgeCount === 0) && (
-                  <p className="db-list-sub" style={{ padding: "8px 0" }}>
-                    No badges earned yet — keep solving!
-                  </p>
-                )}
-                {/* Badge data isn't returned by /user/stats yet.
-                    Add badges[] to getUserStats response to populate this. */}
+                <p className="db-list-sub" style={{ padding: "8px 0" }}>
+                  No badges earned yet — keep solving!
+                </p>
               </div>
             </div>
-          </div>
 
+          </div>
         </div>
       </main>
     </div>

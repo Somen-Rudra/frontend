@@ -444,6 +444,106 @@
 }
 .db-btn-outline:active { transform: translateY(0); }
 
+
+
+/* Heatmap cell with hover tooltip */
+.db-hcell--hoverable {
+  cursor: pointer;
+}
+ 
+.db-hcell-tooltip {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-xs);
+  box-shadow: var(--shadow-md);
+  padding: 5px 9px;
+  white-space: nowrap;
+  z-index: 100;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+ 
+.db-hcell-tooltip strong {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+ 
+.db-hcell-tooltip span {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+ 
+/* Arrow under tooltip */
+.db-hcell-tooltip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 4px solid transparent;
+  border-top-color: var(--border-primary);
+}
+ 
+ 
+/* ── Append to ai-page.css ───────────────────────────────────────────────── */
+ 
+/* Preloaded submission banner */
+.ai-preloaded-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  background: var(--color-primary-light);
+  border: 1px solid var(--color-primary-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4) var(--space-5);
+  margin-bottom: var(--space-5);
+}
+ 
+.ai-preloaded-banner__left {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  flex: 1;
+  min-width: 0;
+  color: var(--color-primary);
+}
+ 
+.ai-preloaded-banner__title {
+  font-size: 13px;
+  color: var(--text-primary);
+  margin-bottom: var(--space-2);
+  line-height: 1.5;
+}
+ 
+.ai-preloaded-banner__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+ 
+.ai-context-banner__code {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3) var(--space-4);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-primary);
+  overflow-x: auto;
+  white-space: pre;
+  line-height: 1.6;
+}
+ 
+
 /* ── Responsive ─────────────────────────────────────────────── */
 @media (max-width: 1280px) {
   .db-charts-grid { grid-template-columns: 1fr 1fr; }

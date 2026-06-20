@@ -1,82 +1,63 @@
 import { useState, useRef, useCallback } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
-  MdDashboard,
-  MdCode,
-  MdEmojiEvents,
-  MdBusiness,
-  MdMessage,
-  MdAutoAwesome,
-  MdBookmark,
-  MdBarChart,
-  MdWorkspacePremium,
-  MdSearch,
-  MdMenu,
-  MdMenuOpen,
+  MdDashboard, MdCode, MdEmojiEvents, MdBusiness, MdMessage,
+  MdAutoAwesome, MdBookmark, MdBarChart, MdWorkspacePremium,
+  MdSearch, MdMenu, MdMenuOpen,
 } from "react-icons/md";
 import ThemeToggle from "./ThemeToggle";
 import ProfilePopup from "./ProfilePopup";
+import { useAuth } from "../context/AuthContext";
 import "../styles/sidebar.css";
 
 export const routeMap = {
-  dashboard: { label: "Dashboard", path: "/", icon: MdDashboard },
-  problems: { label: "Problems", path: "/problemSet", icon: MdCode },
-  contests: { label: "Contests", path: "/contests", icon: MdEmojiEvents },
-  companies: { label: "Companies", path: "/companies", icon: MdBusiness },
-  interviews: { label: "Interviews", path: "/interviews", icon: MdMessage },
-  aiFeatures: {
-    label: "AI Features",
-    path: "/ai-features",
-    icon: MdAutoAwesome,
-  },
-  bookmarks: { label: "Bookmarks", path: "/bookmarks", icon: MdBookmark },
-  progress: { label: "Progress", path: "/progress", icon: MdBarChart },
-  certificates: {
-    label: "Certificates",
-    path: "/certificates",
-    icon: MdWorkspacePremium,
-  },
-  submissions:{label:"Submissions",path:"/submissions",icon:MdWorkspacePremium}
+  dashboard:    { label: "Dashboard",   path: "/",            icon: MdDashboard        },
+  problems:     { label: "Problems",    path: "/problemSet",  icon: MdCode             },
+  contests:     { label: "Contests",    path: "/contests",    icon: MdEmojiEvents      },
+  companies:    { label: "Companies",   path: "/companies",   icon: MdBusiness         },
+  interviews:   { label: "Interviews",  path: "/interviews",  icon: MdMessage          },
+  aiFeatures:   { label: "AI Features", path: "/ai-features", icon: MdAutoAwesome      },
+  bookmarks:    { label: "Bookmarks",   path: "/bookmarks",   icon: MdBookmark         },
+  progress:     { label: "Progress",    path: "/progress",    icon: MdBarChart         },
+  certificates: { label: "Certificates",path: "/certificates",icon: MdWorkspacePremium },
+  submissions:  { label: "Submissions", path: "/submissions", icon: MdWorkspacePremium },
 };
 
 const BOTTOM_KEYS = [];
 
-const USER = {
-  name: "Arjun Sharma",
-  handle: "@arjun_codes",
-  avatar: "AS",
-  plan: "Free",
-};
+function getInitials(name = "") {
+  return name
+    .split(" ")
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+}
 
 const MIN_WIDTH = 160;
 const MAX_WIDTH = 360;
 const COLLAPSE_THRESHOLD = 100;
 
 export default function Sidebar({ routes = routeMap }) {
-  const location = useLocation();
-  const [collapsed, setCollapsed] = useState(false);
-  const [width, setWidth] = useState(220);
-  const [showPopup, setShowPopup] = useState(false);
-  const avatarRef = useRef(null);
-  const isResizing = useRef(false);
-  const sidebarRef = useRef(null);
+  const location   = useLocation();
+  const { user }   = useAuth();                 // ← dynamic user
+  const [collapsed,  setCollapsed]  = useState(false);
+  const [width,      setWidth]      = useState(220);
+  const [showPopup,  setShowPopup]  = useState(false);
+  const avatarRef   = useRef(null);
+  const isResizing  = useRef(false);
+  const sidebarRef  = useRef(null);
 
-  const topRoutes = Object.entries(routes).filter(
-    ([k]) => !BOTTOM_KEYS.includes(k),
-  );
-  const bottomRoutes = Object.entries(routes).filter(([k]) =>
-    BOTTOM_KEYS.includes(k),
-  );
+  const topRoutes    = Object.entries(routes).filter(([k]) => !BOTTOM_KEYS.includes(k));
+  const bottomRoutes = Object.entries(routes).filter(([k]) =>  BOTTOM_KEYS.includes(k));
 
   const startResize = useCallback((e) => {
     e.preventDefault();
     isResizing.current = true;
-    document.body.style.cursor = "col-resize";
+    document.body.style.cursor    = "col-resize";
     document.body.style.userSelect = "none";
 
-    if (sidebarRef.current) {
-      sidebarRef.current.style.transition = "none";
-    }
+    if (sidebarRef.current) sidebarRef.current.style.transition = "none";
 
     const onMove = (e) => {
       if (!isResizing.current) return;
@@ -92,18 +73,19 @@ export default function Sidebar({ routes = routeMap }) {
 
     const onUp = () => {
       isResizing.current = false;
-      document.body.style.cursor = "";
+      document.body.style.cursor    = "";
       document.body.style.userSelect = "";
-      if (sidebarRef.current) {
-        sidebarRef.current.style.transition = "";
-      }
+      if (sidebarRef.current) sidebarRef.current.style.transition = "";
       window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
+      window.removeEventListener("mouseup",   onUp);
     };
 
     window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
+    window.addEventListener("mouseup",   onUp);
   }, []);
+
+  const initials  = user ? getInitials(user.name) : "?";
+  const isPremium = user?.isPremium ?? false;
 
   return (
     <aside
@@ -115,16 +97,8 @@ export default function Sidebar({ routes = routeMap }) {
       <div className="sidebar__header">
         {!collapsed && (
           <Link to="/" className="sidebar__brand">
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="16 18 22 12 16 6" />
               <polyline points="8 6 2 12 8 18" />
             </svg>
@@ -144,11 +118,7 @@ export default function Sidebar({ routes = routeMap }) {
       {!collapsed ? (
         <div className="sidebar__search">
           <MdSearch className="sidebar__search-icon" size={16} />
-          <input
-            type="text"
-            placeholder="Search…"
-            className="sidebar__search-input"
-          />
+          <input type="text" placeholder="Search…" className="sidebar__search-input" />
         </div>
       ) : (
         <button className="sidebar__icon-btn" title="Search">
@@ -160,7 +130,7 @@ export default function Sidebar({ routes = routeMap }) {
       <nav className="sidebar__nav">
         {topRoutes.map(([key, route]) => {
           const active = location.pathname === route.path;
-          const Icon = route.icon;
+          const Icon   = route.icon;
           return (
             <Link
               key={key}
@@ -170,9 +140,7 @@ export default function Sidebar({ routes = routeMap }) {
               title={collapsed ? route.label : undefined}
             >
               <Icon size={18} className="sidebar__link-icon" />
-              {!collapsed && (
-                <span className="sidebar__link-label">{route.label}</span>
-              )}
+              {!collapsed && <span className="sidebar__link-label">{route.label}</span>}
               {!collapsed && active && <span className="sidebar__link-dot" />}
             </Link>
           );
@@ -181,8 +149,8 @@ export default function Sidebar({ routes = routeMap }) {
 
       <div className="sidebar__spacer" />
 
-      {/* ── Upgrade card ── */}
-      {!collapsed && (
+      {/* ── Upgrade card (hide for premium users) ── */}
+      {!collapsed && !isPremium && (
         <div className="sidebar__upgrade">
           <div className="sidebar__upgrade-label">
             <MdAutoAwesome size={14} /> Pro plan
@@ -200,7 +168,7 @@ export default function Sidebar({ routes = routeMap }) {
       <div className="sidebar__bottom">
         {bottomRoutes.map(([key, route]) => {
           const active = location.pathname === route.path;
-          const Icon = route.icon;
+          const Icon   = route.icon;
           return (
             <Link
               key={key}
@@ -210,16 +178,12 @@ export default function Sidebar({ routes = routeMap }) {
               title={collapsed ? route.label : undefined}
             >
               <Icon size={18} className="sidebar__link-icon" />
-              {!collapsed && (
-                <span className="sidebar__link-label">{route.label}</span>
-              )}
+              {!collapsed && <span className="sidebar__link-label">{route.label}</span>}
             </Link>
           );
         })}
 
-        <div
-          className={`sidebar__bottom-row ${collapsed ? "sidebar__bottom-row--col" : ""}`}
-        >
+        <div className={`sidebar__bottom-row ${collapsed ? "sidebar__bottom-row--col" : ""}`}>
           <ThemeToggle />
 
           <div className="sidebar__avatar-wrap">
@@ -230,7 +194,7 @@ export default function Sidebar({ routes = routeMap }) {
               aria-label="Open profile menu"
               aria-expanded={showPopup}
             >
-              {USER.avatar}
+              {initials}
             </button>
 
             {showPopup && (
