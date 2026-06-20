@@ -1,4 +1,6 @@
 import Problem from "../models/problemModel.js";
+import User from "../models/userModel.js";
+import TryCatch from "../middlewares/TryCatch.js";
 
 const PROBLEM_LIST_FIELDS = `
   problemNumber
@@ -585,3 +587,22 @@ export const getProblemEditorData = async (req, res) => {
     });
   }
 };
+
+export const getRecommended = TryCatch(async (req, res) => {
+  const user = await User.findById(req.user._id)
+    .select("solvedProblems")
+    .lean();
+
+  const solved = user.solvedProblems ?? [];
+
+  // Fetch unsolved problems, mix of difficulties
+  const problems = await Problem.find({
+    _id: { $nin: solved },
+    isPublished: true,
+  })
+    .select("title slug difficulty topics acceptancePercentage")
+    .limit(6)
+    .lean();
+
+  return res.status(200).json({ success: true, problems });
+});

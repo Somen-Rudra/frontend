@@ -1,7 +1,3 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// src/routes/problemRouter.js  (updated — execution routes now import from
-// submissionController, and two new submission-list routes are added)
-// ─────────────────────────────────────────────────────────────────────────────
 import express from "express";
 
 import {
@@ -15,20 +11,23 @@ import {
   getFeaturedProblems,
   getRandomProblem,
   getProblemStats,
-  togglePublishProblem,getProblemEditorData
+  togglePublishProblem,
+  getProblemEditorData,
+  getRecommended,
 } from "../controllers/problemController.js";
 
 import {
   runCode,
   submitCode,
-  getSubmissionsForProblem, 
+  getSubmissionsForProblem,
 } from "../controllers/submissionController.js";
+
+import { isAuthenticated, checkRole } from "../middlewares/isAuthenticated.js";
 
 const problemRouter = express.Router();
 
 /* =========================
    Public Routes
-   ⚠️  Static paths MUST stay above /:slug
 ========================= */
 problemRouter.get("/",               getProblems);
 problemRouter.get("/metadata",       getProblemMetadata);
@@ -36,37 +35,23 @@ problemRouter.get("/featured",       getFeaturedProblems);
 problemRouter.get("/random",         getRandomProblem);
 problemRouter.get("/stats/overview", getProblemStats);
 problemRouter.get("/number/:number", getProblemByNumber);
-problemRouter.get("/:slug/editor", getProblemEditorData);
+problemRouter.get("/recommended",    isAuthenticated, getRecommended);
+problemRouter.get("/:slug/editor",   getProblemEditorData);
 problemRouter.get("/:slug",          getProblemBySlug);
 
 /* =========================
-   Execution Routes
+   Execution Routes (auth required)
 ========================= */
-problemRouter.post("/:slug/run",         runCode);
-problemRouter.post("/:slug/submit",      submitCode);
-problemRouter.get( "/:slug/submissions", getSubmissionsForProblem);
+problemRouter.post("/:slug/run",         isAuthenticated, runCode);
+problemRouter.post("/:slug/submit",      isAuthenticated, submitCode);
+problemRouter.get( "/:slug/submissions", isAuthenticated, getSubmissionsForProblem);
 
 /* =========================
-   Admin Routes
+   Admin Routes (auth + admin role required)
 ========================= */
-problemRouter.post("/",               createProblem);
-problemRouter.patch("/:slug/publish", togglePublishProblem);
-problemRouter.patch("/:slug",         updateProblem);
-problemRouter.delete("/:slug",        deleteProblem);
+problemRouter.post("/",               isAuthenticated, checkRole("admin"), createProblem);
+problemRouter.patch("/:slug/publish", isAuthenticated, checkRole("admin"), togglePublishProblem);
+problemRouter.patch("/:slug",         isAuthenticated, checkRole("admin"), updateProblem);
+problemRouter.delete("/:slug",        isAuthenticated, checkRole("admin"), deleteProblem);
 
 export default problemRouter;
-
-
-// ─────────────────────────────────────────────────────────────────────────────
-// src/routes/submissionRouter.js  (standalone router mounted at /submissions)
-// ─────────────────────────────────────────────────────────────────────────────
-// import express from "express";
-// import { getSubmissionById } from "../controllers/submissionController.js";
-//
-// const submissionRouter = express.Router();
-// submissionRouter.get("/:submissionId", getSubmissionById);
-// export default submissionRouter;
-//
-// Then in app.js:
-//   import submissionRouter from "./routes/submissionRouter.js";
-//   app.use("/api/submissions", submissionRouter);

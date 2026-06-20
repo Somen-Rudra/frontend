@@ -4,7 +4,8 @@ import { FiUser, FiMail, FiLock, FiEye, FiEyeOff } from "react-icons/fi";
 import "../styles/auth.css";
 import { useAuth } from "../context/AuthContext";
 
-const Register = () => {
+
+export default function Register () {
   const { register } = useAuth();
   const navigate = useNavigate();
 
@@ -224,4 +225,4 @@ const Register = () => {
   );
 };
 
-export default Register;
+ 

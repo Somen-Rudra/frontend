@@ -12,6 +12,8 @@ import AICodeExplanation from "./components/AICodeExplanation";
 import Contest from "./pages/Contests";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import VerifyEmail from "./pages/VerifyEmail";
+import SubmissionsPage from "./pages/SubmissionPage";
 
 export default function App() {
   const { user, loading } = useAuth();
@@ -27,6 +29,7 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/token/:token" element={<VerifyEmail />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     );
@@ -44,7 +47,11 @@ export default function App() {
           <Route path="/problemSet" element={<ProblemSet />} />
           <Route path="/problemSet/:slug" element={<Workspace />} />
           <Route path="/ai-features" element={<AIFeaturesPage />} />
-          <Route path="/ai-features/code-explanation" element={<AICodeExplanation />} />
+          <Route
+            path="/ai-features/code-explanation"
+            element={<AICodeExplanation />}
+          />
+          <Route path="/submissions" element={<SubmissionsPage />} />
           <Route path="/contests" element={<Contest />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

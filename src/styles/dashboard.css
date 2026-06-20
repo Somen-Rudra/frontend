@@ -134,7 +134,7 @@
   background: var(--border-primary);
   transition: background var(--transition-fast);
 }
-.db-hcell--0 { background: var(--border-primary); }
+.db-hcell--0 { background: var(--bg-tertiary); }
 .db-hcell--1 { background: rgba(220,20,60,.18); }
 .db-hcell--2 { background: rgba(220,20,60,.38); }
 .db-hcell--3 { background: rgba(220,20,60,.65); }

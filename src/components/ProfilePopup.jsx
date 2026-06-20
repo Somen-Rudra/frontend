@@ -1,38 +1,41 @@
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import "../styles/profile-popup.css";
 
-const USER = {
-  name: "PRIYOTOSH",
-  handle: "@priyo_codes",
-  avatar: "AS",
-  plan: "Free",
-};
+function getInitials(name = "") {
+  return name
+    .split(" ")
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+}
 
 export default function ProfilePopup({ onClose, anchorRef, collapsed }) {
+  const { user, logout } = useAuth();
   const popupRef = useRef(null);
   const navigate = useNavigate();
 
+  // Position popup relative to anchor
   useEffect(() => {
     if (!anchorRef?.current || !popupRef.current) return;
 
     const position = () => {
-      const rect = anchorRef.current.getBoundingClientRect();
-      const popup = popupRef.current;
-      const popupHeight = popup.offsetHeight;
-      const popupWidth = popup.offsetWidth;
+      const rect   = anchorRef.current.getBoundingClientRect();
+      const popup  = popupRef.current;
+      const popupH = popup.offsetHeight;
+      const popupW = popup.offsetWidth;
 
       let left = rect.right + 8;
-      let top = rect.bottom - popupHeight;
+      let top  = rect.bottom - popupH;
 
-      // clamp so it never overflows the viewport
-      if (left + popupWidth > window.innerWidth)
-        left = rect.left - popupWidth - 8;
+      if (left + popupW > window.innerWidth) left = rect.left - popupW - 8;
       if (top < 8) top = 8;
 
       popup.style.left = `${left}px`;
-      popup.style.top = `${top}px`;
+      popup.style.top  = `${top}px`;
     };
 
     position();
@@ -40,6 +43,7 @@ export default function ProfilePopup({ onClose, anchorRef, collapsed }) {
     return () => window.removeEventListener("resize", position);
   }, [anchorRef, collapsed]);
 
+  // Close on outside click
   useEffect(() => {
     const handler = (e) => {
       if (
@@ -60,27 +64,36 @@ export default function ProfilePopup({ onClose, anchorRef, collapsed }) {
     onClose();
   };
 
+  const handleLogout = async () => {
+    onClose();
+    await logout();
+    navigate("/login");
+  };
+
+  const initials = getInitials(user?.name ?? "");
+  const handle   = user?.email ? `@${user.email.split("@")[0]}` : "";
+
   return createPortal(
-    <div
-      ref={popupRef}
-      className="prof-popup"
-      style={{ position: "fixed", zIndex: 9999 }}
-    >
-      {/* Identity header */}
+    <div ref={popupRef} className="prof-popup" style={{ position: "fixed", zIndex: 9999 }}>
+
+      {/* Identity */}
       <div className="prof-popup__header">
-        <div className="prof-popup__avatar">{USER.avatar}</div>
+        <div className="prof-popup__avatar">{initials}</div>
         <div className="prof-popup__info">
-          <span className="prof-popup__name">{USER.name}</span>
-          <span className="prof-popup__handle">{USER.handle}</span>
+          <span className="prof-popup__name">{user?.name ?? "—"}</span>
+          <span className="prof-popup__handle">{handle}</span>
         </div>
       </div>
 
+      {/* Plan */}
       <div className="prof-popup__plan">
         <i className="ti ti-sparkles" aria-hidden="true" />
-        {USER.plan} Plan
-        <Link to="/pricing" className="prof-popup__upgrade" onClick={onClose}>
-          Upgrade
-        </Link>
+        {user?.isPremium ? "Premium" : "Free"} Plan
+        {!user?.isPremium && (
+          <Link to="/pricing" className="prof-popup__upgrade" onClick={onClose}>
+            Upgrade
+          </Link>
+        )}
       </div>
 
       <div className="prof-popup__divider" />
@@ -90,20 +103,17 @@ export default function ProfilePopup({ onClose, anchorRef, collapsed }) {
           <i className="ti ti-user" aria-hidden="true" />
           View Profile
         </button>
-        <button className="prof-popup__item" onClick={() => go("/progress")}>
+        <button className="prof-popup__item" onClick={() => go("/submissions")}>
+          <i className="ti ti-code" aria-hidden="true" />
+          My Submissions
+        </button>
+        <button className="prof-popup__item" onClick={() => go("/dashboard")}>
           <i className="ti ti-chart-line" aria-hidden="true" />
-          My Progress
+          Dashboard
         </button>
-        <button className="prof-popup__item" onClick={() => go("/bookmarks")}>
-          <i className="ti ti-bookmark" aria-hidden="true" />
-          Bookmarks
-        </button>
-        <button
-          className="prof-popup__item"
-          onClick={() => go("/certificates")}
-        >
-          <i className="ti ti-certificate" aria-hidden="true" />
-          Certificates
+        <button className="prof-popup__item" onClick={() => go("/ai-features")}>
+          <i className="ti ti-sparkles" aria-hidden="true" />
+          AI Features
         </button>
       </div>
 
@@ -114,32 +124,18 @@ export default function ProfilePopup({ onClose, anchorRef, collapsed }) {
           <i className="ti ti-settings" aria-hidden="true" />
           Settings
         </button>
-        <button
-          className="prof-popup__item"
-          onClick={() => go("/settings/notifications")}
-        >
-          <i className="ti ti-bell" aria-hidden="true" />
-          Notifications
-        </button>
-        <button
-          className="prof-popup__item"
-          onClick={() => go("/settings/billing")}
-        >
-          <i className="ti ti-credit-card" aria-hidden="true" />
-          Billing
-        </button>
+        {user?.role === "admin" && (
+          <button className="prof-popup__item" onClick={() => go("/admin")}>
+            <i className="ti ti-shield" aria-hidden="true" />
+            Admin Panel
+          </button>
+        )}
       </div>
 
       <div className="prof-popup__divider" />
 
       <div className="prof-popup__section">
-        <button
-          className="prof-popup__item prof-popup__item--danger"
-          onClick={() => {
-            onClose();
-            /* call your auth logout here */
-          }}
-        >
+        <button className="prof-popup__item prof-popup__item--danger" onClick={handleLogout}>
           <i className="ti ti-logout" aria-hidden="true" />
           Log out
         </button>

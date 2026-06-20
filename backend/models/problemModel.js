@@ -196,12 +196,14 @@ const problemSchema = new mongoose.Schema(
       default: [],
     },
 
-    similarQuestions: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Problem",
+    similarQuestions: {
+      type: [{ type: mongoose.Schema.Types.ObjectId, ref: "Problem" }],
+      validate: {
+        validator: (arr) => arr.length <= 10,
+        message: "Max 10 similar questions allowed.",
       },
-    ],
+      default: [],
+    },
 
     languages: {
       type: Map,

@@ -70,12 +70,10 @@ export const registerUser = TryCatch(async (req, res) => {
   // Fail fast if user already exists (optimistic check before hashing)
   const existingUser = await User.findOne({ email }).lean();
   if (existingUser) {
-    return res
-      .status(409)
-      .json({
-        success: false,
-        message: "An account with this email already exists.",
-      });
+    return res.status(409).json({
+      success: false,
+      message: "An account with this email already exists.",
+    });
   }
 
   const hashedPassword = await bcrypt.hash(password, 12); // 12 rounds for better security
@@ -147,12 +145,10 @@ export const verifyUser = TryCatch(async (req, res) => {
   } catch (err) {
     // Handle race condition: duplicate key error from MongoDB unique index
     if (err.code === 11000) {
-      return res
-        .status(409)
-        .json({
-          success: false,
-          message: "An account with this email already exists.",
-        });
+      return res.status(409).json({
+        success: false,
+        message: "An account with this email already exists.",
+      });
     }
     throw err; // Re-throw unexpected errors for TryCatch middleware to handle
   }
@@ -255,12 +251,10 @@ export const verifyOtp = TryCatch(async (req, res) => {
   const storedOtpString = await redis.get(otpKey);
 
   if (!storedOtpString) {
-    return res
-      .status(400)
-      .json({
-        success: false,
-        message: "OTP has expired. Please login again.",
-      });
+    return res.status(400).json({
+      success: false,
+      message: "OTP has expired. Please login again.",
+    });
   }
 
   const storedOtp = JSON.parse(storedOtpString);
@@ -291,9 +285,27 @@ export const verifyOtp = TryCatch(async (req, res) => {
 });
 
 // ─── My Profile ───────────────────────────────────────────────────────────────
-
 export const myProfile = TryCatch(async (req, res) => {
-  return res.status(200).json({ success: true, user: req.user });
+  const user = await User.findById(req.user._id)
+    .select("-password")
+    .populate("solvedProblems", "difficulty")
+    .lean();
+
+  if (!user) {
+    return res.status(404).json({ success: false, message: "User not found." });
+  }
+
+  const solvedCount = user.solvedCount ?? { easy: 0, medium: 0, hard: 0 };
+  const totalSolved = solvedCount.easy + solvedCount.medium + solvedCount.hard;
+
+  return res.status(200).json({
+    success: true,
+    user: {
+      ...user,
+      solvedCount,
+      totalSolved,
+    },
+  });
 });
 
 // ─── Refresh Token ────────────────────────────────────────────────────────────

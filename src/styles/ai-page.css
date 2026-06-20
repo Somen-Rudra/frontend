@@ -414,6 +414,143 @@
   animation: spin 0.8s linear infinite;
 }
 
+/* ── Append these to your existing ai-page.css ── */
+
+/* Spinner */
+.btn-spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+.btn-spinner--sm { width: 10px; height: 10px; border-color: rgba(0,0,0,0.2); border-top-color: var(--text-primary); }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Result sections */
+.result-section  { margin-bottom: var(--space-4); }
+.result-summary  { color: var(--text-secondary); font-size: 13.5px; line-height: 1.6; margin-bottom: var(--space-3); }
+.result-block    { margin-bottom: var(--space-4); }
+.result-block h4 { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-2); }
+.result-block p  { font-size: 13.5px; color: var(--text-secondary); line-height: 1.65; }
+.result-ol       { padding-left: 18px; display: flex; flex-direction: column; gap: 6px; }
+.result-ol li    { font-size: 13.5px; color: var(--text-secondary); line-height: 1.6; }
+.result-error    { color: var(--danger); font-size: 13px; padding: var(--space-3); background: var(--hard-bg); border-radius: var(--radius-sm); display: flex; flex-direction: column; gap: var(--space-2); }
+
+/* Tip */
+.result-tip {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: var(--bg-tertiary);
+  border-left: 3px solid var(--color-primary);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  padding: var(--space-3) var(--space-4);
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-top: var(--space-3);
+}
+.tip-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  margin-top: 1px;
+}
+
+/* Complexity badges */
+.complexity-badges-row { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-bottom: var(--space-4); }
+.complexity-badge {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 14px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-sm);
+  min-width: 90px;
+}
+.complexity-badge__label { font-size: 10.5px; color: var(--text-muted); font-weight: 500; margin-bottom: 3px; }
+.complexity-badge__value { font-size: 15px; font-weight: 700; color: var(--color-primary); font-family: var(--font-mono); }
+
+/* Approach badge */
+.approach-name-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 99px;
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: var(--space-3);
+}
+
+/* Tags */
+.tag-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 99px;
+  font-size: 11.5px;
+  font-weight: 500;
+  border: 1px solid var(--border-primary);
+  color: var(--text-secondary);
+  background: var(--bg-tertiary);
+}
+
+/* Bug cards */
+.bug-card {
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-3);
+  background: var(--bg-secondary);
+}
+.bug-card__header { display: flex; align-items: center; gap: 8px; margin-bottom: var(--space-2); flex-wrap: wrap; }
+.bug-card__type   { font-size: 11.5px; font-weight: 600; color: var(--text-primary); text-transform: capitalize; }
+.bug-card__location { font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); }
+.bug-card__severity { font-size: 10.5px; font-weight: 600; text-transform: uppercase; margin-left: auto; color: var(--text-muted); }
+.bug-card__desc   { font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
+.bug-card__fix    { margin-top: var(--space-2); font-size: 12.5px; color: var(--text-secondary); display: flex; gap: 6px; align-items: flex-start; }
+.severity-dot     { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+/* Code result wrap */
+.code-result-wrap { border: 1px solid var(--border-primary); border-radius: var(--radius-sm); overflow: hidden; margin-top: var(--space-3); }
+.code-result-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 14px;
+  background: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border-primary);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+/* Test case cards */
+.test-case-card {
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-3);
+  background: var(--bg-secondary);
+}
+.test-case-card__header { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-2); }
+.test-case-io { display: flex; flex-direction: column; gap: 6px; }
+.test-case-io > div { display: flex; align-items: baseline; gap: 10px; font-size: 12.5px; }
+.test-case-io code { font-family: var(--font-mono); font-size: 12px; color: var(--text-primary); background: var(--bg-tertiary); padding: 2px 6px; border-radius: 4px; }
+.io-label { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; min-width: 60px; }
+
+
 @keyframes spin {
   to {
     transform: rotate(360deg);
@@ -454,3 +591,4 @@
     min-height: 180px;
   }
 }
+

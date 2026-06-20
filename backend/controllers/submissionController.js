@@ -184,7 +184,7 @@ export const runCode = async (req, res) => {
     const stitchedCode = stitchCode(langTemplate, code);
 
     const judgeResponse = await callJudge(language, stitchedCode, testCases);
-    
+
     /* ── Build a lightweight result (no DB write for "run") ───────────── */
     const results = judgeResponse.results || [];
     const verdict = deriveVerdict(results);
@@ -195,6 +195,7 @@ export const runCode = async (req, res) => {
     if (req.user) {
       await Submission.create({
         user: req.user._id,
+        userName: req.user.name,
         problem: problem._id,
         problemSlug: slug,
         problemNumber: problem.problemNumber,
@@ -333,9 +334,8 @@ export const submitCode = async (req, res) => {
 
     /* ── Persist submission ───────────────────────────────────────────── */
     const submission = await Submission.create({
-      user:
-        req.user?._id ??
-        new (await import("mongoose")).default.Types.ObjectId(), // remove fallback once auth is wired
+      user: req.user?._id,
+      userName: req.user?.name ?? "Anonymous",
       problem: problem._id,
       problemSlug: slug,
       problemNumber: problem.problemNumber,
@@ -445,7 +445,7 @@ export const getSubmissionsForProblem = async (req, res) => {
     const filter = {
       problemSlug: slug,
       isOfficial: true,
-      // user: req.user._id,   ← uncomment when auth is wired
+      user: req.user._id,
     };
 
     const [submissions, total] = await Promise.all([

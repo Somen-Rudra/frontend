@@ -11,11 +11,10 @@ API.interceptors.response.use(
   async (error) => {
     const original = error.config;
 
-    const isAuthCheck = original.url === "/auth/me";
     const isRefreshCall = original.url === "/auth/refresh";
 
     // Don't retry session checks or refresh calls — just reject immediately
-    if (error.response?.status === 401 && !original._retry && !isAuthCheck && !isRefreshCall) {
+    if (error.response?.status === 401 && !original._retry && !isRefreshCall) {
       original._retry = true;
 
       try {
@@ -27,5 +26,5 @@ API.interceptors.response.use(
     }
 
     return Promise.reject(error); // let AuthContext .catch() handle it
-  }
+  },
 );

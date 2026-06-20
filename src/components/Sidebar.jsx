@@ -36,6 +36,7 @@ export const routeMap = {
     path: "/certificates",
     icon: MdWorkspacePremium,
   },
+  submissions:{label:"Submissions",path:"/submissions",icon:MdWorkspacePremium}
 };
 
 const BOTTOM_KEYS = [];

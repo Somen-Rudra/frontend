@@ -58,6 +58,11 @@ const submissionSchema = new mongoose.Schema(
       index: true,
     },
 
+    userName:{
+      type:String,
+      required:true
+    },
+
     problem: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Problem",

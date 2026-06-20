@@ -1,207 +1,382 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
+import { API } from "../config/axios";
 import "../styles/ai-page.css";
 
-const DEFAULT_CODE = `def two_sum(nums, target):
-    seen = {}
-    for i, num in enumerate(nums):
-        rem = target - num
-        if rem in seen:
-            return [seen[rem], i]
-        seen[num] = i`;
+// ─── Constants ────────────────────────────────────────────────────────────────
 
-const RELATED_PROBLEMS = [
-  { name: "Two Sum", difficulty: "Easy" },
-  { name: "3Sum", difficulty: "Medium" },
-  { name: "4Sum", difficulty: "Medium" },
-  { name: "Two Sum II - Input Array Is Sorted", difficulty: "Easy" },
-  { name: "Two Sum IV - Input is a BST", difficulty: "Medium" },
+const LANGUAGE_OPTIONS = ["Python", "JavaScript", "Java", "C++", "C", "Go", "Kotlin", "Swift"];
+
+const LANGUAGE_MAP = {
+  Python: "py", JavaScript: "js", Java: "java",
+  "C++": "cpp", C: "c", Go: "go", Kotlin: "kotlin", Swift: "swift",
+};
+
+const FOLLOWUPS = [
+  { key: "complexity", label: "Explain Complexity",   endpoint: "/ai/complexity"  },
+  { key: "approach",   label: "Approach Explainer",   endpoint: "/ai/approach"    },
+  { key: "bugs",       label: "Bug Finder",            endpoint: "/ai/bug-finder"  },
+  { key: "optimize",   label: "Code Optimization",     endpoint: "/ai/optimize"    },
 ];
 
 const MORE_ACTIONS = [
-  "Generate Test Cases",
-  "Optimize Code",
-  "Convert to Another Language",
-  "Find Similar Problems",
+  { key: "test-cases", label: "Generate Test Cases",        endpoint: "/ai/test-cases"  },
+  { key: "concept",    label: "Explain a Concept",          endpoint: null              }, // opens prompt
 ];
 
-const FOLLOWUPS = [
-  { key: "complexity", label: "Explain Complexity" },
-  { key: "approach", label: "Approach Explainer" },
-  { key: "bugs", label: "Bug Finder" },
-  { key: "hints", label: "Hint Generation" },
-  { key: "optimize", label: "Code Optimization" },
-  { key: "walkthrough", label: "Show Example Walkthrough" },
-];
-
-const SAMPLE_RESULTS = {
-  overview:
-    "This solves the Two Sum problem. It returns the indices of two numbers that add up to the target.",
-  steps: [
-    "We create a dictionary seen to store numbers and their indices.",
-    "We iterate through the list using enumerate to get both index and value.",
-    "For each number, we calculate the remainder (target - num).",
-    "If the remainder exists in the dictionary, we found our pair.",
-    "Otherwise, we add the current number and its index to the dictionary.",
-  ],
-  complexity: { time: "O(n)", space: "O(n)" },
-  approach: [
-    "Identify what value would complete the pair for the current element.",
-    "Use a hash map for O(1) average lookups instead of nested loops.",
-    "Trade extra space for a single linear pass over the array.",
-  ],
-  bugs: [
-    {
-      line: "Line 6",
-      message:
-        "No bug detected, but if duplicate target sums are possible, only the first match is returned.",
-    },
-  ],
-  hints: [
-    "Think about what information you need to remember as you scan the array.",
-    "A hash map can turn an O(n^2) search into an O(1) lookup.",
-    "For each element, check if its complement has already been seen.",
-  ],
-  optimized: `def two_sum(nums, target):
-    seen = {}
-    for i, num in enumerate(nums):
-        rem = target - num
-        if rem in seen:
-            return [seen[rem], i]
-        seen[num] = i
-    return []`,
-};
+// ─── Icons ────────────────────────────────────────────────────────────────────
 
 function CopyIcon() {
   return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="9" y="9" width="13" height="13" rx="2" />
       <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
     </svg>
   );
 }
 
-function SparkleIcon() {
+function SparkleIcon({ size = 40 }) {
   return (
-    <svg
-      width="40"
-      height="40"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M5.6 18.4l2.8-2.8M15.6 8.4l2.8-2.8" />
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8
+               M5.6 18.4l2.8-2.8M15.6 8.4l2.8-2.8" />
       <circle cx="12" cy="12" r="3" />
     </svg>
   );
 }
 
-function ActionIcon({ name }) {
-  const icons = {
-    "Generate Test Cases": (
-      <svg
-        width="16"
-        height="16"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <path d="M9 11l3 3L22 4" />
-        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
-      </svg>
-    ),
-    "Optimize Code": (
-      <svg
-        width="16"
-        height="16"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z" />
-      </svg>
-    ),
-    "Convert to Another Language": (
-      <svg
-        width="16"
-        height="16"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <path d="M4 5h7M9 3v2c0 4.5-2 8-6 11M12 21l4-8 4 8M13.5 17h5" />
-      </svg>
-    ),
-    "Find Similar Problems": (
-      <svg
-        width="16"
-        height="16"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <circle cx="11" cy="11" r="8" />
-        <path d="M21 21l-4.35-4.35" />
-      </svg>
-    ),
-  };
-  return icons[name] || null;
+function CheckIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
 }
 
-export default function AICodeExplanation() {
-  const [code, setCode] = useState(DEFAULT_CODE);
-  const [language, setLanguage] = useState("Python");
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState(SAMPLE_RESULTS);
-  const [activeFollowup, setActiveFollowup] = useState(null);
+// ─── Small sub-components ─────────────────────────────────────────────────────
 
-  const handleExplain = () => {
-    setLoading(true);
+function ComplexityBadge({ label, value }) {
+  return (
+    <div className="complexity-badge">
+      <span className="complexity-badge__label">{label}</span>
+      <strong className="complexity-badge__value">{value}</strong>
+    </div>
+  );
+}
+
+function SeverityDot({ severity }) {
+  const colors = { high: "var(--hard)", medium: "var(--medium)", low: "var(--easy)" };
+  return (
+    <span className="severity-dot" style={{ background: colors[severity] ?? "var(--text-muted)" }} />
+  );
+}
+
+// ─── Result renderers ─────────────────────────────────────────────────────────
+
+function ComplexityResult({ data }) {
+  return (
+    <div className="result-section">
+      <div className="complexity-badges-row">
+        <ComplexityBadge label="Time" value={data.timeComplexity} />
+        <ComplexityBadge label="Space" value={data.spaceComplexity} />
+      </div>
+      <div className="result-block">
+        <h4>Time Complexity</h4>
+        <p>{data.timeExplanation}</p>
+      </div>
+      <div className="result-block">
+        <h4>Space Complexity</h4>
+        <p>{data.spaceExplanation}</p>
+      </div>
+      {data.bottleneck && (
+        <div className="result-block">
+          <h4>Bottleneck</h4>
+          <p>{data.bottleneck}</p>
+        </div>
+      )}
+      {data.optimizationTip && data.optimizationTip !== "Already optimal" && (
+        <div className="result-tip">
+          <span className="tip-label">💡 Tip</span>
+          {data.optimizationTip}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ApproachResult({ data }) {
+  return (
+    <div className="result-section">
+      <div className="approach-name-badge">{data.approachName}</div>
+      <p className="result-summary">{data.summary}</p>
+      {data.steps?.length > 0 && (
+        <div className="result-block">
+          <h4>Steps</h4>
+          <ol className="result-ol">
+            {data.steps.map((s, i) => <li key={i}>{s}</li>)}
+          </ol>
+        </div>
+      )}
+      {data.dataStructuresUsed?.length > 0 && (
+        <div className="result-block">
+          <h4>Data Structures Used</h4>
+          <div className="tag-row">
+            {data.dataStructuresUsed.map((d, i) => <span key={i} className="tag">{d}</span>)}
+          </div>
+        </div>
+      )}
+      {data.whyThisWorks && (
+        <div className="result-block">
+          <h4>Why This Works</h4>
+          <p>{data.whyThisWorks}</p>
+        </div>
+      )}
+      {data.realLifeAnalogy && (
+        <div className="result-tip">
+          <span className="tip-label">🌍 Analogy</span>
+          {data.realLifeAnalogy}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BugResult({ data }) {
+  return (
+    <div className="result-section">
+      <p className="result-summary">{data.overallVerdict}</p>
+      {!data.hasIssues && (
+        <div className="result-tip" style={{ color: "var(--easy)" }}>
+          <CheckIcon /> No issues found — code looks clean!
+        </div>
+      )}
+      {data.issues?.map((issue, i) => (
+        <div key={i} className="bug-card">
+          <div className="bug-card__header">
+            <SeverityDot severity={issue.severity} />
+            <span className="bug-card__type">{issue.type}</span>
+            <span className="bug-card__location">{issue.location}</span>
+            <span className="bug-card__severity">{issue.severity}</span>
+          </div>
+          <p className="bug-card__desc">{issue.description}</p>
+          {issue.suggestedFix && (
+            <div className="bug-card__fix">
+              <span className="tip-label">Fix</span> {issue.suggestedFix}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function OptimizeResult({ data }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard?.writeText(data.optimizedCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="result-section">
+      {data.canOptimize ? (
+        <>
+          <div className="complexity-badges-row">
+            <ComplexityBadge label="Before Time"  value={data.currentComplexity?.time}    />
+            <ComplexityBadge label="After Time"   value={data.optimizedComplexity?.time}  />
+            <ComplexityBadge label="Before Space" value={data.currentComplexity?.space}   />
+            <ComplexityBadge label="After Space"  value={data.optimizedComplexity?.space} />
+          </div>
+          <div className="result-block">
+            <h4>What Changed</h4>
+            <p>{data.explanation}</p>
+          </div>
+          <div className="code-result-wrap">
+            <div className="code-result-header">
+              <span>Optimized Code</span>
+              <button className="copy-icon-btn" onClick={handleCopy}>
+                {copied ? <CheckIcon /> : <CopyIcon />}
+              </button>
+            </div>
+            <pre className="optimized-code-block"><code>{data.optimizedCode}</code></pre>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="result-tip" style={{ color: "var(--easy)" }}>
+            <CheckIcon /> {data.explanation || "Your code is already optimal."}
+          </div>
+          <pre className="optimized-code-block"><code>{data.optimizedCode}</code></pre>
+        </>
+      )}
+    </div>
+  );
+}
+
+function TestCasesResult({ data }) {
+  const categoryColor = {
+    normal: "var(--info)", edge: "var(--hard)",
+    boundary: "var(--medium)", stress: "var(--color-primary)",
+  };
+  return (
+    <div className="result-section">
+      {data.testCases?.map((tc, i) => (
+        <div key={i} className="test-case-card">
+          <div className="test-case-card__header">
+            <span className="tag" style={{ color: categoryColor[tc.category], borderColor: categoryColor[tc.category] }}>
+              {tc.category}
+            </span>
+            <span className="bug-card__desc">{tc.reason}</span>
+          </div>
+          <div className="test-case-io">
+            <div><span className="io-label">Input</span><code>{tc.input}</code></div>
+            <div><span className="io-label">Expected</span><code>{tc.expectedOutput}</code></div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
+
+export default function AICodeExplanation() {
+  const location = useLocation();
+  const preloaded = location.state?.preloaded ?? null;
+
+  // Map preloaded language key (cpp/py/js) → display label
+  const preloadedLangLabel = preloaded?.language
+    ? Object.entries(LANGUAGE_MAP).find(([, v]) => v === preloaded.language)?.[0] ?? "C++"
+    : "Python";
+
+  const [code,     setCode]     = useState(preloaded?.code     ?? "");
+  const [language, setLanguage] = useState(preloadedLangLabel);
+
+  // overview result from /ai/approach (used as the main "Explain" action)
+  const [overview,        setOverview]        = useState(null);
+  const [overviewLoading, setOverviewLoading] = useState(false);
+  const [overviewError,   setOverviewError]   = useState(null);
+
+  // followup results keyed by followup key
+  const [followupResults,  setFollowupResults]  = useState({});
+  const [followupLoading,  setFollowupLoading]  = useState(null); // which key is loading
+  const [followupError,    setFollowupError]    = useState(null);
+  const [activeFollowup,   setActiveFollowup]   = useState(null);
+
+  // more actions
+  const [testCases,        setTestCases]        = useState(null);
+  const [testCasesLoading, setTestCasesLoading] = useState(false);
+  const [showTestCases,    setShowTestCases]    = useState(false);
+
+  const [copied, setCopied] = useState(false);
+
+  // Auto-explain if arriving with preloaded code
+  useEffect(() => {
+    if (preloaded?.code) {
+      handleExplain(preloaded.code, preloadedLangLabel);
+    }
+  }, []); // eslint-disable-line
+
+  // ── Actions ───────────────────────────────────────────────────────────────
+
+  const handleExplain = async (codeOverride, langOverride) => {
+    const finalCode = codeOverride ?? code;
+    const finalLang = langOverride ?? language;
+    if (!finalCode.trim()) return;
+
+    setOverviewLoading(true);
+    setOverviewError(null);
+    setOverview(null);
+    setFollowupResults({});
     setActiveFollowup(null);
-    setTimeout(() => {
-      setResult(SAMPLE_RESULTS);
-      setLoading(false);
-    }, 900);
+    setShowTestCases(false);
+
+    try {
+      const res = await API.post("/ai/approach", {
+        code: finalCode,
+        language: LANGUAGE_MAP[finalLang] ?? finalLang.toLowerCase(),
+        problemDescription: preloaded?.problemTitle ?? "",
+      });
+      setOverview(res.data.data);
+    } catch {
+      setOverviewError("Failed to explain code. Please try again.");
+    } finally {
+      setOverviewLoading(false);
+    }
+  };
+
+  const handleFollowup = async (followup) => {
+    // Toggle off if already active
+    if (activeFollowup === followup.key && followupResults[followup.key]) {
+      setActiveFollowup(null);
+      return;
+    }
+
+    setActiveFollowup(followup.key);
+
+    // Use cached result if available
+    if (followupResults[followup.key]) return;
+
+    setFollowupLoading(followup.key);
+    setFollowupError(null);
+
+    try {
+      const res = await API.post(followup.endpoint, {
+        code,
+        language: LANGUAGE_MAP[language] ?? language.toLowerCase(),
+        problemDescription: preloaded?.problemTitle ?? "",
+      });
+      setFollowupResults(prev => ({ ...prev, [followup.key]: res.data.data }));
+    } catch {
+      setFollowupError(`Failed to load ${followup.label}. Please try again.`);
+      setActiveFollowup(null);
+    } finally {
+      setFollowupLoading(null);
+    }
+  };
+
+  const handleGenerateTestCases = async () => {
+    setShowTestCases(true);
+    if (testCases) return; // cached
+
+    setTestCasesLoading(true);
+    try {
+      const res = await API.post("/ai/test-cases", {
+        problemDescription: preloaded?.problemTitle ?? "Analyze the code and generate test cases",
+        constraints: "",
+      });
+      setTestCases(res.data.data);
+    } catch {
+      setTestCases(null);
+    } finally {
+      setTestCasesLoading(false);
+    }
   };
 
   const handleClear = () => {
     setCode("");
-    setResult(null);
+    setOverview(null);
+    setOverviewError(null);
+    setFollowupResults({});
     setActiveFollowup(null);
+    setShowTestCases(false);
+    setTestCases(null);
   };
 
-  const handleCopy = () => {
-    if (navigator?.clipboard) {
-      navigator.clipboard.writeText(code);
-    }
+  const handleCopyCode = () => {
+    navigator.clipboard?.writeText(code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleFollowup = (key) => {
-    setActiveFollowup(key);
-  };
+  const activeFollowupMeta = FOLLOWUPS.find(f => f.key === activeFollowup);
+
+  // ── Render ───────────────────────────────────────────────────────────────
 
   return (
     <div className="ai-explain-page">
@@ -215,35 +390,28 @@ export default function AICodeExplanation() {
       </div>
 
       <div className="ai-explain-grid">
-        {/* Left: Code input panel */}
+
+        {/* ── Left: Code input ────────────────────────────────────────────── */}
         <div className="panel code-panel">
           <div className="panel-title">Your Code</div>
+
           <div className="panel-toolbar">
             <select
               className="language-select"
               value={language}
-              onChange={(e) => setLanguage(e.target.value)}
+              onChange={e => setLanguage(e.target.value)}
             >
-              <option>Python</option>
-              <option>JavaScript</option>
-              <option>Java</option>
-              <option>C++</option>
-              <option>C</option>
-              <option>Go</option>
+              {LANGUAGE_OPTIONS.map(l => <option key={l}>{l}</option>)}
             </select>
-            <button
-              className="copy-icon-btn"
-              onClick={handleCopy}
-              aria-label="Copy code"
-            >
-              <CopyIcon />
+            <button className="copy-icon-btn" onClick={handleCopyCode} title="Copy code">
+              {copied ? <CheckIcon /> : <CopyIcon />}
             </button>
           </div>
 
           <textarea
             className="code-textarea"
             value={code}
-            onChange={(e) => setCode(e.target.value)}
+            onChange={e => setCode(e.target.value)}
             placeholder="Paste your code here..."
             spellCheck="false"
           />
@@ -254,172 +422,173 @@ export default function AICodeExplanation() {
             </button>
             <button
               className="btn btn-primary"
-              onClick={handleExplain}
-              disabled={!code.trim() || loading}
+              onClick={() => handleExplain()}
+              disabled={!code.trim() || overviewLoading}
             >
-              {loading ? "Explaining..." : "Explain Code"}
+              {overviewLoading ? (
+                <><span className="btn-spinner" /> Explaining…</>
+              ) : "Explain Code"}
             </button>
           </div>
         </div>
 
-        {/* Middle: Explanation panel */}
+        {/* ── Middle: Explanation panel ────────────────────────────────────── */}
         <div className="panel explanation-panel">
-          <div className="panel-title">AI Explanation</div>
+          <div className="panel-title">
+            {activeFollowupMeta ? activeFollowupMeta.label : "AI Explanation"}
+          </div>
 
-          {loading && (
+          {/* Loading states */}
+          {(overviewLoading || followupLoading) && (
             <div className="loading-row">
               <div className="spinner" />
-              Analyzing your code...
+              {followupLoading
+                ? `Running ${FOLLOWUPS.find(f => f.key === followupLoading)?.label}…`
+                : "Analyzing your code…"}
             </div>
           )}
 
-          {!loading && !result && (
+          {/* Empty state */}
+          {!overviewLoading && !followupLoading && !overview && !overviewError && (
             <div className="explanation-empty">
               <SparkleIcon />
               <p>Paste your code and click "Explain Code" to get started.</p>
             </div>
           )}
 
-          {!loading && result && (
+          {/* Overview error */}
+          {overviewError && !overviewLoading && (
+            <div className="result-error">
+              {overviewError}
+              <button className="subs-retry-btn" onClick={() => handleExplain()}>Retry</button>
+            </div>
+          )}
+
+          {/* Followup error */}
+          {followupError && !followupLoading && (
+            <div className="result-error">{followupError}</div>
+          )}
+
+          {/* Overview / approach result */}
+          {!overviewLoading && overview && !activeFollowup && (
             <>
-              <div className="explanation-section">
-                <h3>Overview</h3>
-                <p>{result.overview}</p>
+              <div className="result-section">
+                <div className="approach-name-badge">{overview.approachName}</div>
+                <p className="result-summary">{overview.summary}</p>
               </div>
-
-              {activeFollowup === null && (
-                <div className="explanation-section">
-                  <h3>Step-by-step Explanation</h3>
-                  <ol>
-                    {result.steps.map((step, i) => (
-                      <li key={i}>{step}</li>
-                    ))}
-                  </ol>
-                </div>
-              )}
-
-              {activeFollowup === "complexity" && (
-                <div className="explanation-section">
-                  <h3>Time &amp; Space Complexity</h3>
-                  <ul className="complexity-list">
-                    <li>
-                      <span>Time Complexity</span>
-                      <strong>{result.complexity.time}</strong>
-                    </li>
-                    <li>
-                      <span>Space Complexity</span>
-                      <strong>{result.complexity.space}</strong>
-                    </li>
-                  </ul>
-                </div>
-              )}
-
-              {activeFollowup === "approach" && (
-                <div className="explanation-section">
-                  <h3>Approach Explainer</h3>
-                  <ul>
-                    {result.approach.map((point, i) => (
-                      <li key={i}>{point}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {activeFollowup === "bugs" && (
-                <div className="explanation-section">
-                  <h3>Bug Finder</h3>
-                  {result.bugs.map((bug, i) => (
-                    <div className="bug-item" key={i}>
-                      <div className="bug-line">{bug.line}</div>
-                      <p>{bug.message}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {activeFollowup === "hints" && (
-                <div className="explanation-section">
-                  <h3>Hint Generation</h3>
-                  {result.hints.map((hint, i) => (
-                    <div className="hint-item" key={i}>
-                      <span className="hint-number">{i + 1}.</span>
-                      {hint}
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {activeFollowup === "optimize" && (
-                <div className="explanation-section">
-                  <h3>Code Optimization</h3>
-                  <pre className="optimized-code-block">{result.optimized}</pre>
-                </div>
-              )}
-
-              {activeFollowup === "walkthrough" && (
-                <div className="explanation-section">
-                  <h3>Example Walkthrough</h3>
-                  <p>
-                    For nums = [2, 7, 11, 15] and target = 9: at i = 0, num = 2,
-                    rem = 7, not in seen, so seen becomes {"{2: 0}"}. At i = 1,
-                    num = 7, rem = 2, which is in seen, so we return [0, 1].
-                  </p>
-                </div>
-              )}
-
-              <div className="explanation-section">
-                <div className="followup-title">
-                  Would you like more details?
-                </div>
-                <div className="followup-grid">
-                  {FOLLOWUPS.map((f) => (
-                    <button
-                      key={f.key}
-                      className={`followup-btn ${activeFollowup === f.key ? "active" : ""}`}
-                      onClick={() => handleFollowup(f.key)}
-                    >
-                      {f.label}
-                    </button>
-                  ))}
-                </div>
+              <div className="result-block">
+                <h4>Step-by-step</h4>
+                <ol className="result-ol">
+                  {overview.steps?.map((s, i) => <li key={i}>{s}</li>)}
+                </ol>
               </div>
+              {overview.whyThisWorks && (
+                <div className="result-block">
+                  <h4>Why This Works</h4>
+                  <p>{overview.whyThisWorks}</p>
+                </div>
+              )}
+              {overview.realLifeAnalogy && (
+                <div className="result-tip">
+                  <span className="tip-label">🌍 Analogy</span>
+                  {overview.realLifeAnalogy}
+                </div>
+              )}
             </>
+          )}
+
+          {/* Followup result */}
+          {!followupLoading && activeFollowup && followupResults[activeFollowup] && (
+            <>
+              {activeFollowup === "complexity" && <ComplexityResult data={followupResults.complexity} />}
+              {activeFollowup === "approach"   && <ApproachResult   data={followupResults.approach}   />}
+              {activeFollowup === "bugs"       && <BugResult        data={followupResults.bugs}        />}
+              {activeFollowup === "optimize"   && <OptimizeResult   data={followupResults.optimize}    />}
+            </>
+          )}
+
+          {/* Test cases inline */}
+          {showTestCases && !activeFollowup && (
+            <div className="result-block" style={{ marginTop: "var(--space-4)" }}>
+              <h4>Generated Test Cases</h4>
+              {testCasesLoading
+                ? <div className="loading-row"><div className="spinner" /> Generating…</div>
+                : testCases
+                  ? <TestCasesResult data={testCases} />
+                  : <p className="result-error">Failed to generate test cases.</p>
+              }
+            </div>
+          )}
+
+          {/* Followup buttons — show only when overview is ready */}
+          {overview && !overviewLoading && (
+            <div className="explanation-section" style={{ marginTop: "auto", paddingTop: "var(--space-5)" }}>
+              <div className="followup-title">Dig deeper</div>
+              <div className="followup-grid">
+                {FOLLOWUPS.map(f => (
+                  <button
+                    key={f.key}
+                    className={`followup-btn ${activeFollowup === f.key ? "active" : ""}`}
+                    onClick={() => handleFollowup(f)}
+                    disabled={followupLoading === f.key}
+                  >
+                    {followupLoading === f.key
+                      ? <><span className="btn-spinner btn-spinner--sm" /> Loading…</>
+                      : f.label}
+                  </button>
+                ))}
+                {activeFollowup && (
+                  <button className="followup-btn" onClick={() => setActiveFollowup(null)}>
+                    ← Back to Overview
+                  </button>
+                )}
+              </div>
+            </div>
           )}
         </div>
 
-        {/* Right column */}
+        {/* ── Right column ─────────────────────────────────────────────────── */}
         <div className="right-column">
-          <div className="panel related-panel">
-            <div className="panel-title">Related Problems</div>
-            <ul className="related-list">
-              {RELATED_PROBLEMS.map((p, i) => (
-                <li key={p.name}>
-                  <span className="problem-name">
-                    <span className="problem-index">{i + 1}.</span>
-                    {p.name}
-                  </span>
-                  <span
-                    className={`difficulty-tag difficulty-${p.difficulty.toLowerCase()}`}
-                  >
-                    {p.difficulty}
-                  </span>
-                </li>
-              ))}
-            </ul>
-            <button className="view-more-btn">View More Problems</button>
-          </div>
 
+          {/* More actions */}
           <div className="panel more-actions-panel">
             <div className="panel-title">More Actions</div>
             <div className="more-actions-list">
-              {MORE_ACTIONS.map((action) => (
-                <button key={action} className="more-action-btn">
-                  <ActionIcon name={action} />
-                  {action}
-                </button>
-              ))}
+              <button
+                className="more-action-btn"
+                onClick={handleGenerateTestCases}
+                disabled={!overview || testCasesLoading}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M9 11l3 3L22 4" />
+                  <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+                </svg>
+                Generate Test Cases
+              </button>
             </div>
           </div>
+
+          {/* Quick stats — show once overview is ready */}
+          {overview && (
+            <div className="panel related-panel">
+              <div className="panel-title">Code Summary</div>
+              <ul className="related-list" style={{ gap: "var(--space-3)" }}>
+                {overview.approachName && (
+                  <li>
+                    <span className="problem-name">Approach</span>
+                    <span className="tag">{overview.approachName}</span>
+                  </li>
+                )}
+                {overview.dataStructuresUsed?.slice(0, 3).map((ds, i) => (
+                  <li key={i}>
+                    <span className="problem-name">{i === 0 ? "Data structures" : ""}</span>
+                    <span className="tag">{ds}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       </div>
     </div>
