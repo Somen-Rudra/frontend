@@ -54,23 +54,21 @@
 }
 
 .sidebar__toggle {
+  height: 35px;
+  width: 35px;
+  color: var(--text-primary);
+
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
-  border-radius: var(--radius-xs);
-  color: var(--text-muted);
-  flex-shrink: 0;
-  transition:
-    color var(--transition-fast),
-    background var(--transition-fast);
-  font-size: 18px;
+
+  padding: 0; /* optional */
+  cursor: pointer; /* optional */
 }
 
 .sidebar__toggle:hover {
-  color: var(--text-primary);
-  background: var(--bg-hover);
+  color: rgb(92, 92, 92);
+  background: var(--bg-primary);
 }
 
 .sidebar--collapsed .sidebar__header {
@@ -369,3 +367,22 @@
   background: var(--color-primary);
   opacity: 0.35;
 }
+
+/* ═══════════════════════════════════════ THEME TOGGLE ═══════════════════════════════════════ */
+.theme-toggle {
+  height: 35px;
+  width: 35px;
+  border: 1px solid var(--border-primary);
+  color: var(--text-primary);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 0; /* optional */
+  cursor: pointer; /* optional */
+}
+.theme-toggle svg {
+  background-color: var(--bg-primary);
+}
+ 

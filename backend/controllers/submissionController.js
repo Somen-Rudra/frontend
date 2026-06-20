@@ -4,6 +4,8 @@ import Submission, {
   VERDICT,
   ALLOWED_LANGUAGES,
 } from "../models/submissionModel.js";
+import User from "../models/userModel.js";
+import { getRedis } from "../config/db.js";
 
 /* =========================
    Config
@@ -12,7 +14,6 @@ import Submission, {
 const JUDGE_URL = process.env.JUDGE_URL || "http://localhost:3000";
 const JUDGE_TIMEOUT_MS = parseInt(process.env.JUDGE_TIMEOUT_MS || "60000", 10);
 
-// Map your problem model's language keys → judge server's language keys
 const LANGUAGE_MAP = {
   js: "javascript",
   py: "python",
@@ -27,34 +28,12 @@ const LANGUAGE_MAP = {
    Helpers
 ========================= */
 
-/**
- * Stitch user code into a runnable file.
- *
- * Template layout (all fields optional except inputOutput + codeStub):
- *
- *   [header]          ← imports, boilerplate the user shouldn't see
- *   [user code]       ← exactly what the editor contains (codeStub default)
- *   [driver / inputOutput] ← reads stdin, calls the user's function, prints output
- *
- * The driver is stored in the `driver` field. For problems where there is
- * no driver (the user writes the full program), `driver` is an empty string
- * and `inputOutput` holds the full expected scaffold instead.
- */
 function stitchCode(langTemplate, userCode) {
   const { header = "", driver = "" } = langTemplate;
-
-  // header  → always prepended (even if empty string — safe)
-  // userCode→ what the user typed
-  // driver  → wraps execution; may be empty for "write a full program" problems
   const parts = [header, userCode, driver].filter((p) => p && p.trim() !== "");
   return parts.join("\n\n");
 }
 
-/**
- * Call the judge /run-tests endpoint.
- *
- * Returns the raw judge response body.
- */
 async function callJudge(language, stitchedCode, testCases) {
   const judgeLanguage = LANGUAGE_MAP[language];
   if (!judgeLanguage)
@@ -65,7 +44,7 @@ async function callJudge(language, stitchedCode, testCases) {
     {
       language: judgeLanguage,
       code: stitchedCode,
-      testCases, // [{ input, output }]
+      testCases,
     },
     { timeout: JUDGE_TIMEOUT_MS },
   );
@@ -73,11 +52,6 @@ async function callJudge(language, stitchedCode, testCases) {
   return data;
 }
 
-/**
- * Derive an overall verdict from the per-test-case results.
- * Priority: compile_error > time_limit_exceeded > runtime_error >
- *           output_limit_exceeded > wrong_answer > accepted
- */
 function deriveVerdict(results) {
   const priority = [
     VERDICT.COMPILE_ERROR,
@@ -93,9 +67,6 @@ function deriveVerdict(results) {
   return VERDICT.ACCEPTED;
 }
 
-/**
- * Build firstFailure summary from results array (null if all passed).
- */
 function buildFirstFailure(results, includeExpected = false) {
   const failing = results.find((r) => !r.passed);
   if (!failing) return null;
@@ -115,8 +86,6 @@ function buildFirstFailure(results, includeExpected = false) {
 
 /* =========================
    POST /:slug/run
-   Runs against VISIBLE test cases only.
-   Not persisted as an official submission.
 ========================= */
 
 export const runCode = async (req, res) => {
@@ -124,34 +93,22 @@ export const runCode = async (req, res) => {
     const { slug } = req.params;
     const { language, code, customCases = [] } = req.body;
 
-    /* ── Basic validation ─────────────────────────────────────────────── */
     if (!language || !ALLOWED_LANGUAGES.includes(language)) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Unsupported language" });
+      return res.status(400).json({ success: false, message: "Unsupported language" });
     }
     if (typeof code !== "string" || !code.trim()) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Code must be non-empty" });
+      return res.status(400).json({ success: false, message: "Code must be non-empty" });
     }
     if (code.length > 65536) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Code exceeds 64 KB limit" });
+      return res.status(400).json({ success: false, message: "Code exceeds 64 KB limit" });
     }
 
-    /* ── Fetch problem (visible test cases only) ──────────────────────── */
     const problem = await Problem.findOne({ slug, isPublished: true })
-      .select(
-        "languages visibleTestCases timeLimit memoryLimit _id problemNumber",
-      )
+      .select("languages visibleTestCases timeLimit memoryLimit _id problemNumber")
       .lean();
 
     if (!problem) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Problem not found" });
+      return res.status(404).json({ success: false, message: "Problem not found" });
     }
 
     const langTemplate = problem.languages?.[language];
@@ -163,9 +120,7 @@ export const runCode = async (req, res) => {
     }
 
     if (!problem.visibleTestCases?.length) {
-      return res
-        .status(422)
-        .json({ success: false, message: "No visible test cases configured" });
+      return res.status(422).json({ success: false, message: "No visible test cases configured" });
     }
 
     const testCases = [
@@ -174,24 +129,16 @@ export const runCode = async (req, res) => {
     ];
 
     if (!testCases.length) {
-      return res.status(422).json({
-        success: false,
-        message: "No test cases configured",
-      });
+      return res.status(422).json({ success: false, message: "No test cases configured" });
     }
 
-    /* ── Stitch & judge ───────────────────────────────────────────────── */
     const stitchedCode = stitchCode(langTemplate, code);
-
     const judgeResponse = await callJudge(language, stitchedCode, testCases);
 
-    /* ── Build a lightweight result (no DB write for "run") ───────────── */
     const results = judgeResponse.results || [];
     const verdict = deriveVerdict(results);
-    const firstFail = buildFirstFailure(results, true); // expose expected in run-mode
+    const firstFail = buildFirstFailure(results, true);
 
-    /* ── Optionally persist a non-official run record ─────────────────── */
-    // Comment this block out entirely if you don't want run-mode saved to DB.
     if (req.user) {
       await Submission.create({
         user: req.user._id,
@@ -238,12 +185,9 @@ export const runCode = async (req, res) => {
     console.error("[runCode]", err.message);
 
     if (err.code === "ECONNREFUSED" || err.code === "ECONNRESET") {
-      return res
-        .status(503)
-        .json({ success: false, message: "Judge service unavailable" });
+      return res.status(503).json({ success: false, message: "Judge service unavailable" });
     }
     if (err.response) {
-      // axios received an error response from the judge
       return res.status(502).json({
         success: false,
         message: "Judge returned an error",
@@ -251,16 +195,12 @@ export const runCode = async (req, res) => {
       });
     }
 
-    return res
-      .status(500)
-      .json({ success: false, message: "Internal Server Error" });
+    return res.status(500).json({ success: false, message: "Internal Server Error" });
   }
 };
 
 /* =========================
    POST /:slug/submit
-   Runs against HIDDEN test cases.
-   Persisted as an official submission and updates acceptance stats.
 ========================= */
 
 export const submitCode = async (req, res) => {
@@ -268,41 +208,28 @@ export const submitCode = async (req, res) => {
     const { slug } = req.params;
     const { language, code } = req.body;
 
-    /* ── Auth guard ───────────────────────────────────────────────────── */
-    // Uncomment when you add authentication middleware:
-    // if (!req.user) return res.status(401).json({ success: false, message: "Unauthorised" });
-
-    /* ── Basic validation ─────────────────────────────────────────────── */
     if (!language || !ALLOWED_LANGUAGES.includes(language)) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Unsupported language" });
+      return res.status(400).json({ success: false, message: "Unsupported language" });
     }
     if (typeof code !== "string" || !code.trim()) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Code must be non-empty" });
+      return res.status(400).json({ success: false, message: "Code must be non-empty" });
     }
     if (code.length > 65536) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Code exceeds 64 KB limit" });
+      return res.status(400).json({ success: false, message: "Code exceeds 64 KB limit" });
     }
 
-    /* ── Fetch problem WITH hidden test cases ─────────────────────────── */
+    /* ── Fetch problem WITH hidden test cases + difficulty ────────────── */
     const problem = await Problem.findForJudge(
       (await Problem.findOne({ slug, isPublished: true }).select("_id").lean())
         ?._id,
     )
       .select(
-        "languages visibleTestCases hiddenTestCases timeLimit memoryLimit _id problemNumber slug acceptanceRate",
+        "languages visibleTestCases hiddenTestCases timeLimit memoryLimit _id problemNumber slug acceptanceRate difficulty",
       )
       .lean();
 
     if (!problem) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Problem not found" });
+      return res.status(404).json({ success: false, message: "Problem not found" });
     }
 
     const langTemplate = problem.languages?.[language];
@@ -315,27 +242,24 @@ export const submitCode = async (req, res) => {
 
     const testCases = problem.hiddenTestCases;
     if (!testCases?.length) {
-      return res
-        .status(422)
-        .json({ success: false, message: "No hidden test cases configured" });
+      return res.status(422).json({ success: false, message: "No hidden test cases configured" });
     }
 
     /* ── Stitch & judge ───────────────────────────────────────────────── */
     const stitchedCode = stitchCode(langTemplate, code);
-
     const judgeResponse = await callJudge(language, stitchedCode, testCases);
 
     /* ── Derive result ────────────────────────────────────────────────── */
     const results = judgeResponse.results || [];
     const verdict = deriveVerdict(results);
-    const firstFail = buildFirstFailure(results, false); // hide expected in submit-mode
+    const firstFail = buildFirstFailure(results, false);
     const passedCount = judgeResponse.passed ?? 0;
     const totalCount = judgeResponse.total ?? results.length;
 
     /* ── Persist submission ───────────────────────────────────────────── */
     const submission = await Submission.create({
-      user: req.user?._id,
-      userName: req.user?.name ?? "Anonymous",
+      user: req.user._id,
+      userName: req.user.name,
       problem: problem._id,
       problemSlug: slug,
       problemNumber: problem.problemNumber,
@@ -361,6 +285,35 @@ export const submitCode = async (req, res) => {
       .exec()
       .catch((e) => console.error("[submitCode] acceptance update failed", e));
 
+    /* ── Update user stats on accepted verdict (fire-and-forget) ─────── */
+    if (verdict === VERDICT.ACCEPTED && req.user) {
+      const today = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
+
+      // Check if already solved to avoid double-counting solvedCount
+      const alreadySolved = (req.user.solvedProblems ?? []).some(
+        (id) => String(id) === String(problem._id)
+      );
+
+      const update = {
+        $addToSet: { solvedProblems: problem._id },
+        $inc: { [`activityMap.${today}`]: 1 },
+      };
+
+      // Only bump difficulty counter if this is first time solving
+      if (!alreadySolved) {
+        update.$inc[`solvedCount.${problem.difficulty}`] = 1;
+      }
+
+      User.findByIdAndUpdate(req.user._id, update)
+        .exec()
+        .then(async () => {
+          // Bust Redis cache so next /auth/me or /user/stats returns fresh data
+          const redis = getRedis();
+          await redis.del(`user:${req.user._id}`);
+        })
+        .catch((e) => console.error("[submitCode] user stats update failed", e));
+    }
+
     /* ── Response ─────────────────────────────────────────────────────── */
     return res.status(200).json({
       success: true,
@@ -371,17 +324,13 @@ export const submitCode = async (req, res) => {
       failed: totalCount - passedCount,
       total: totalCount,
       totalElapsed: judgeResponse.totalElapsed ?? 0,
-      firstFailure: firstFail, // null when accepted
-      // We intentionally omit per-test-case details on submit
-      // (user can query GET /submissions/:id for the breakdown)
+      firstFailure: firstFail,
     });
   } catch (err) {
     console.error("[submitCode]", err.message);
 
     if (err.code === "ECONNREFUSED" || err.code === "ECONNRESET") {
-      return res
-        .status(503)
-        .json({ success: false, message: "Judge service unavailable" });
+      return res.status(503).json({ success: false, message: "Judge service unavailable" });
     }
     if (err.response) {
       return res.status(502).json({
@@ -391,15 +340,12 @@ export const submitCode = async (req, res) => {
       });
     }
 
-    return res
-      .status(500)
-      .json({ success: false, message: "Internal Server Error" });
+    return res.status(500).json({ success: false, message: "Internal Server Error" });
   }
 };
 
 /* =========================
    GET /submissions/:submissionId
-   Fetch a single submission with full test-case breakdown.
 ========================= */
 
 export const getSubmissionById = async (req, res) => {
@@ -412,28 +358,18 @@ export const getSubmissionById = async (req, res) => {
       .lean();
 
     if (!submission) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Submission not found" });
+      return res.status(404).json({ success: false, message: "Submission not found" });
     }
-
-    // Ownership check — uncomment when auth is wired:
-    // if (String(submission.user) !== String(req.user._id)) {
-    //   return res.status(403).json({ success: false, message: "Forbidden" });
-    // }
 
     return res.status(200).json({ success: true, data: submission });
   } catch (err) {
     console.error("[getSubmissionById]", err.message);
-    return res
-      .status(500)
-      .json({ success: false, message: "Internal Server Error" });
+    return res.status(500).json({ success: false, message: "Internal Server Error" });
   }
 };
 
 /* =========================
    GET /problemSet/:slug/submissions
-   All submissions for a problem (current user).
 ========================= */
 
 export const getSubmissionsForProblem = async (req, res) => {
@@ -470,8 +406,6 @@ export const getSubmissionsForProblem = async (req, res) => {
     });
   } catch (err) {
     console.error("[getSubmissionsForProblem]", err.message);
-    return res
-      .status(500)
-      .json({ success: false, message: "Internal Server Error" });
+    return res.status(500).json({ success: false, message: "Internal Server Error" });
   }
 };

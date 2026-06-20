@@ -15,7 +15,12 @@ export const getUserStats = TryCatch(async (req, res) => {
   }
 
   const solvedCount = user.solvedCount ?? { easy: 0, medium: 0, hard: 0 };
-  const heatmap = Object.fromEntries(user.activityMap ?? new Map());
+  const heatmap = user.activityMap
+    ? user.activityMap instanceof Map
+      ? Object.fromEntries(user.activityMap)
+      : user.activityMap // .lean() already gives a plain object
+    : {};
+
 
   return res.status(200).json({
     success: true,
@@ -35,7 +40,6 @@ export const getUserStats = TryCatch(async (req, res) => {
 export const recentSubmissions = TryCatch(async (req, res) => {
   const submissions = await Submission.find({
     user: req.user._id,
-    mode: "run",
   })
     .sort({ createdAt: -1 })
     .limit(5)
